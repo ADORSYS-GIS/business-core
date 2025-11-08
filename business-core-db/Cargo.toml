@@ -1,0 +1,34 @@
+[package]
+name = "business-core-db"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["sqlx"]
+sqlx = []
+
+[dependencies]
+# Core dependencies
+uuid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rust_decimal = { workspace = true }
+async-trait = { workspace = true }
+heapless = { version = "0.8", features = ["serde"] }
+blake3 = { version = "1.5", features = ["serde"] }
+
+# Business Core API
+business-core-api = { path = "../business-core-api" }
+
+# Cache
+postgres-index-cache = { path = "../../postgres-index-cache" }
+
+# Database
+sqlx = { workspace = true }
+
+[dev-dependencies]
+moka = { version = "0.12", features = ["sync"] }

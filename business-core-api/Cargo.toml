@@ -1,0 +1,25 @@
+[package]
+name = "business-core-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Core dependencies
+uuid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+rust_decimal = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+validator = { version = "0.20", features = ["derive"] }
+heapless = { version = "0.8", features = ["serde"] }
+blake3 = { version = "1.5", features = ["serde"] }
+sqlx = { workspace = true, optional = true }
+
+[features]
+sqlx = ["dep:sqlx"]
