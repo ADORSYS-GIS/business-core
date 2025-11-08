@@ -55,7 +55,7 @@ jobs:
 
       - name: Run clippy security checks
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/business_core_db
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5433/business_core_db
         run: cargo clippy -- -W clippy::suspicious -W clippy::perf -W clippy::complexity
 
       - name: Stop Databases

@@ -11,6 +11,8 @@ repository.workspace = true
 business-core-api = { path = "../business-core-api" }
 business-core-db = { path = "../business-core-db" }
 postgres-unit-of-work = { git = "https://github.com/ADORSYS-GIS/postgres-unit-of-work", branch = "master" }
+postgres-index-cache = { git = "https://github.com/ADORSYS-GIS/postgres-index-cache", branch = "master", features = ["sqlx-listener"] }
+parking_lot = "0.12"
 
 # Database
 sqlx = { workspace = true, features = ["rust_decimal"] }

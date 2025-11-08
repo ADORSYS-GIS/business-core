@@ -38,7 +38,7 @@ jobs:
 
     - name: Run tests
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/business_core_db
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5433/business_core_db
       run: cargo test --verbose
 
     - name: Run clippy

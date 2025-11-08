@@ -1,7 +1,7 @@
 use super::index::Index;
 
 /// Trait for types that can be converted to an Index
-pub trait Indexable {
+pub trait IndexAware {
     /// The associated Index type that this type can be converted to
     type IndexType: Index;
     

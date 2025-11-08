@@ -247,6 +247,8 @@ dependencies = [
  "business-core-db",
  "chrono",
  "heapless",
+ "parking_lot",
+ "postgres-index-cache",
  "postgres-unit-of-work",
  "rust_decimal",
  "serde",
@@ -1341,6 +1343,7 @@ checksum = "f84267b20a16ea918e43c6a88433c2d54fa145c92a811b5b047ccbe153674483"
 [[package]]
 name = "postgres-index-cache"
 version = "0.1.0"
+source = "git+https://github.com/ADORSYS-GIS/postgres-index-cache?branch=master#402641ffc2d8d66fe387fcd550d4fd57ba8d4ab7"
 dependencies = [
  "async-trait",
  "futures",

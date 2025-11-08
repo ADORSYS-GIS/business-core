@@ -4,23 +4,30 @@
 //! that are automatically rolled back, ensuring perfect test isolation without
 //! the need for explicit cleanup operations.
 
-use crate::postgres_repositories::{AuditRepositories, PostgresRepositories};
+use crate::postgres_repositories::{AuditRepositories, PersonRepositories, PostgresRepositories};
 use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
 use std::time::Duration;
+use postgres_index_cache::CacheNotificationListener;
 
 /// Test context that provides a transactional database session
-/// 
-/// This struct holds audit repositories that will be automatically
+///
+/// This struct holds audit and person repositories that will be automatically
 /// rolled back when dropped, ensuring test isolation.
 pub struct TestContext {
     pub audit_repos: AuditRepositories,
+    pub person_repos: PersonRepositories,
 }
 
 impl TestContext {
     /// Get the audit repositories from the context
     pub fn audit_repos(&self) -> &AuditRepositories {
         &self.audit_repos
+    }
+
+    /// Get the person repositories from the context
+    pub fn person_repos(&self) -> &PersonRepositories {
+        &self.person_repos
     }
 }
 
@@ -46,7 +53,7 @@ impl TestContext {
 /// ```
 pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Error + Send + Sync>> {
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5432/business_core_db".to_string());
+        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5433/business_core_db".to_string());
 
     let pool = PgPoolOptions::new()
         .max_connections(1)
@@ -56,10 +63,23 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
 
     sqlx::migrate!().run(&pool).await?;
 
-    let repos = PostgresRepositories::new(Arc::new(pool));
+    let repos = PostgresRepositories::new(Arc::new(pool.clone()));
     let audit_repos = repos.create_audit_repositories().await;
+    
+    // Create and start listener for cache notifications
+    let mut listener = CacheNotificationListener::new();
+    let person_repos = repos.create_person_repositories(Some(&mut listener)).await;
+    
+    // Start listening to notifications in background
+    let pool_clone = pool.clone();
+    let _listen_handle = tokio::spawn(async move {
+        listener.listen(&pool_clone).await.ok();
+    });
 
-    Ok(TestContext { audit_repos })
+    Ok(TestContext {
+        audit_repos,
+        person_repos,
+    })
 }
 
 /// Setup a shared PostgresRepositories for tests that need to share state
@@ -70,7 +90,7 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
 #[allow(dead_code)]
 pub async fn setup_shared_repos() -> Result<PostgresRepositories, Box<dyn std::error::Error + Send + Sync>> {
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://user:password@localhost:5432/business_core_db".to_string());
+        .unwrap_or_else(|_| "postgresql://user:password@localhost:5433/business_core_db".to_string());
 
     let pool = PgPoolOptions::new()
         .max_connections(5)

@@ -25,7 +25,7 @@ blake3 = { version = "1.5", features = ["serde"] }
 business-core-api = { path = "../business-core-api" }
 
 # Cache
-postgres-index-cache = { path = "../../postgres-index-cache" }
+postgres-index-cache = { git = "https://github.com/ADORSYS-GIS/postgres-index-cache", branch = "master" }
 
 # Database
 sqlx = { workspace = true }

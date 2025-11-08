@@ -1,0 +1,111 @@
+use async_trait::async_trait;
+use business_core_db::repository::delete_batch::DeleteBatch;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+
+use super::repo_impl::CountryRepositoryImpl;
+
+impl CountryRepositoryImpl {
+    pub(super) async fn delete_batch_impl(
+        repo: &CountryRepositoryImpl,
+        ids: &[Uuid],
+    ) -> Result<usize, Box<dyn Error + Send + Sync>> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+
+        // Delete from index table first
+        let delete_idx_query = r#"DELETE FROM country_idx WHERE id = ANY($1)"#;
+        let delete_query = r#"DELETE FROM country WHERE id = ANY($1)"#;
+
+        let mut tx = repo.executor.tx.lock().await;
+        if let Some(transaction) = tx.as_mut() {
+            sqlx::query(delete_idx_query).bind(ids).execute(&mut **transaction).await?;
+            let result = sqlx::query(delete_query).bind(ids).execute(&mut **transaction).await?;
+            
+            // Update cache
+            let mut cache = repo.country_idx_cache.write();
+            for id in ids {
+                cache.remove(id);
+            }
+            drop(cache);
+            
+            Ok(result.rows_affected() as usize)
+        } else {
+            Err("Transaction has been consumed".into())
+        }
+    }
+}
+
+#[async_trait]
+impl DeleteBatch<Postgres> for CountryRepositoryImpl {
+    async fn delete_batch(
+        &self,
+        ids: &[Uuid],
+        _audit_log_id: Uuid,
+    ) -> Result<usize, Box<dyn Error + Send + Sync>> {
+        Self::delete_batch_impl(self, ids).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_helper::setup_test_context;
+    use business_core_db::models::person::country::CountryModel;
+    use business_core_db::repository::create_batch::CreateBatch;
+    use business_core_db::repository::delete_batch::DeleteBatch;
+    use heapless::String as HeaplessString;
+    use uuid::Uuid;
+
+    fn create_test_country(iso2: &str, name: &str) -> CountryModel {
+        CountryModel {
+            id: Uuid::new_v4(),
+            iso2: HeaplessString::try_from(iso2).unwrap(),
+            name_l1: HeaplessString::try_from(name).unwrap(),
+            name_l2: None,
+            name_l3: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let country_repo = &ctx.person_repos().country_repository;
+
+        let mut countries = Vec::new();
+        for i in 0..5 {
+            let country = create_test_country(
+                &format!("D{}", i),
+                &format!("Test Country {}", i),
+            );
+            countries.push(country);
+        }
+
+        let audit_log_id = Uuid::new_v4();
+        let saved_countries = country_repo.create_batch(countries.clone(), audit_log_id).await?;
+        let ids: Vec<Uuid> = saved_countries.iter().map(|c| c.id).collect();
+
+        let deleted_count = country_repo.delete_batch(&ids, audit_log_id).await?;
+        assert_eq!(deleted_count, 5);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_delete_batch_with_non_existing_countries() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let country_repo = &ctx.person_repos().country_repository;
+
+        let mut ids = Vec::new();
+        for _ in 0..2 {
+            ids.push(Uuid::new_v4());
+        }
+
+        let audit_log_id = Uuid::new_v4();
+        let deleted_count = country_repo.delete_batch(&ids, audit_log_id).await?;
+        assert_eq!(deleted_count, 0);
+
+        Ok(())
+    }
+}
