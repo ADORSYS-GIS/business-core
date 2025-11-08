@@ -2,7 +2,6 @@ use heapless::String as HeaplessString;
 use sqlx::{postgres::PgRow, Row};
 use std::error::Error;
 use serde::Serialize;
-use std::hash::Hasher;
 use std::str::FromStr;
 use blake3::Hasher as Blake3Hasher;
 

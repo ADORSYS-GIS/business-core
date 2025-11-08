@@ -50,12 +50,11 @@ mod tests {
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
 
         let audit_log_model = new_test_audit_log();
-        let result = audit_log_repo.create(vec![audit_log_model.clone()]).await;
+        let result = audit_log_repo.create(&audit_log_model).await;
 
         assert!(result.is_ok());
-        let created_logs = result.unwrap();
-        assert_eq!(created_logs.len(), 1);
-        assert_eq!(created_logs[0].id, audit_log_model.id);
+        let created = result.unwrap();
+        assert_eq!(created.id, audit_log_model.id);
 
         Ok(())
     }
