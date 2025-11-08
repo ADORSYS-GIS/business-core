@@ -1,3 +1,4 @@
+pub mod pagination;
 pub mod exist_by_ids;
 pub mod find_index_by_id;
 pub mod find_indices_by_ids;
@@ -14,6 +15,7 @@ pub mod delete_batch;
 // pub mod person;
 
 // Re-exports
+pub use pagination::*;
 pub use exist_by_ids::*;
 pub use find_index_by_id::*;
 pub use find_indices_by_ids::*;
