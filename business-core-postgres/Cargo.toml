@@ -24,6 +24,7 @@ chrono.workspace = true
 rust_decimal.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+ciborium.workspace = true
 
 # Error handling
 thiserror.workspace = true
@@ -33,7 +34,7 @@ async-trait.workspace = true
 
 # Stack optimization
 heapless.workspace = true
-blake3 = { version = "1.5", features = ["serde"] }
+twox-hash = "2.1.1"
 
 # Logging
 tracing.workspace = true

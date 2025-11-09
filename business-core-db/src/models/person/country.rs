@@ -5,6 +5,7 @@ use uuid::Uuid;
 use std::collections::HashMap;
 use crate::{HasPrimaryKey, IdxModelCache, Indexable};
 use crate::models::{IndexAware, Identifiable, Index};
+use crate::utils::hash_as_i64;
 
 /// # Documentation
 /// - Country structure with ISO 3166-1 alpha-2 code
@@ -42,13 +43,8 @@ impl IndexAware for CountryModel {
     type IndexType = CountryIdxModel;
     
     fn to_index(&self) -> Self::IndexType {
-        // Calculate hash for iso2 field
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-        
-        let mut hasher = DefaultHasher::new();
-        self.iso2.as_str().hash(&mut hasher);
-        let iso2_hash = hasher.finish() as i64;
+        // Calculate hash for iso2 field using the centralized hash_as_i64 function
+        let iso2_hash = hash_as_i64(&self.iso2.as_str());
         
         CountryIdxModel {
             id: self.id,

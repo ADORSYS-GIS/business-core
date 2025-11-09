@@ -18,36 +18,42 @@ impl CountryRepositoryImpl {
         }
 
         let mut updated_items = Vec::new();
+        let mut indices = Vec::new();
         
-        for item in items {
-            let query = sqlx::query(
-                r#"
-                UPDATE country
-                SET iso2 = $2, name_l1 = $3, name_l2 = $4, name_l3 = $5
-                WHERE id = $1
-                "#,
-            )
-            .bind(item.id)
-            .bind(item.iso2.as_str())
-            .bind(item.name_l1.as_str())
-            .bind(item.name_l2.as_ref().map(|s| s.as_str()))
-            .bind(item.name_l3.as_ref().map(|s| s.as_str()));
-
+        // Acquire lock once and do all database operations
+        {
             let mut tx = self.executor.tx.lock().await;
-            if let Some(transaction) = tx.as_mut() {
-                query.execute(&mut **transaction).await?;
-            } else {
-                return Err("Transaction has been consumed".into());
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
+            for item in items {
+                // Execute update
+                sqlx::query(
+                    r#"
+                    UPDATE country
+                    SET iso2 = $2, name_l1 = $3, name_l2 = $4, name_l3 = $5
+                    WHERE id = $1
+                    "#,
+                )
+                .bind(item.id)
+                .bind(item.iso2.as_str())
+                .bind(item.name_l1.as_str())
+                .bind(item.name_l2.as_ref().map(|s| s.as_str()))
+                .bind(item.name_l3.as_ref().map(|s| s.as_str()))
+                .execute(&mut **transaction)
+                .await?;
+
+                indices.push((item.id, item.to_index()));
+                updated_items.push(item);
             }
-
-            // Update index cache
-            let idx = item.to_index();
+        } // Transaction lock released here
+        
+        // Update cache after releasing transaction lock
+        {
             let mut cache = self.country_idx_cache.write();
-            cache.remove(&item.id);
-            cache.add(idx);
-            drop(cache);
-
-            updated_items.push(item);
+            for (id, idx) in indices {
+                cache.remove(&id);
+                cache.add(idx);
+            }
         }
 
         Ok(updated_items)

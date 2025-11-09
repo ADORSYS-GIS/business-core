@@ -5,10 +5,61 @@
 //! the need for explicit cleanup operations.
 
 use crate::postgres_repositories::{AuditRepositories, PersonRepositories, PostgresRepositories};
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::sync::Arc;
 use std::time::Duration;
 use postgres_index_cache::CacheNotificationListener;
+use tokio::sync::OnceCell;
+
+// Flag to track if DB initialization has been done
+static DB_INITIALIZED: OnceCell<()> = OnceCell::const_new();
+
+/// Initialize database and get a test pool with 2 connections
+///
+/// This function uses a special 2-connection pool for DB initialization (only on first call),
+/// then returns a new 2-connection pool for each invocation.
+async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>> {
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5433/business_core_db".to_string());
+
+    // Initialize DB only on first call using a dedicated 2-connection pool
+    DB_INITIALIZED.get_or_try_init(|| async {
+        let init_pool = PgPoolOptions::new()
+            .max_connections(2)
+            .min_connections(1)
+            .acquire_timeout(Duration::from_secs(10))
+            .connect(&database_url)
+            .await?;
+
+        // Init DB
+        postgres_index_cache::init_cache_triggers(&init_pool).await?;
+        sqlx::migrate!().run(&init_pool).await?;
+
+        init_pool.close().await;
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+    }).await?;
+
+    // Create and return a new 2-connection pool for each call
+    let pool = PgPoolOptions::new()
+        .max_connections(2)
+        .min_connections(1)
+        .acquire_timeout(Duration::from_secs(10))
+        .idle_timeout(Some(Duration::from_secs(20)))
+        .max_lifetime(Some(Duration::from_secs(1800)))
+        .after_connect(|conn, _meta| {
+            Box::pin(async move {
+                // Set statement timeout to prevent hung queries
+                sqlx::query("SET statement_timeout = '5s'")
+                    .execute(conn)
+                    .await?;
+                Ok(())
+            })
+        })
+        .connect(&database_url)
+        .await?;
+
+    Ok(Arc::new(pool))
+}
 
 /// Test context that provides a transactional database session
 ///
@@ -17,6 +68,7 @@ use postgres_index_cache::CacheNotificationListener;
 pub struct TestContext {
     pub audit_repos: AuditRepositories,
     pub person_repos: PersonRepositories,
+    listener_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl TestContext {
@@ -30,12 +82,20 @@ impl TestContext {
         &self.person_repos
     }
 }
+impl Drop for TestContext {
+    fn drop(&mut self) {
+        if let Some(handle) = self.listener_handle.take() {
+            handle.abort();
+        }
+    }
+}
 
-/// Setup a test context with a transactional database session
+/// Setup a test context with a transactional database session (without listener)
 ///
 /// This function creates a new database connection pool, starts a transaction,
 /// and returns a TestContext that will automatically roll back the transaction
-/// when dropped.
+/// when dropped. This version does NOT start the cache notification listener,
+/// making it suitable for standard tests that don't need cache synchronization.
 ///
 /// # Example
 ///
@@ -52,55 +112,48 @@ impl TestContext {
 /// }
 /// ```
 pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Error + Send + Sync>> {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5433/business_core_db".to_string());
-
-    let pool = PgPoolOptions::new()
-        .max_connections(1)
-        .acquire_timeout(Duration::from_secs(30))
-        .connect(&database_url)
-        .await?;
-
-    sqlx::migrate!().run(&pool).await?;
-
-    let repos = PostgresRepositories::new(Arc::new(pool.clone()));
-    let audit_repos = repos.create_audit_repositories().await;
+    let pool = get_or_init_test_pool().await?;
     
-    // Create and start listener for cache notifications
+    let repos = PostgresRepositories::new(pool);
+    
+    // Use the new method that creates both repositories with a SHARED transaction
+    // This prevents connection exhaustion by using only 1 transaction instead of 2
+    let (audit_repos, person_repos) = repos.create_all_repositories(None).await;
+
+    Ok(TestContext {
+        audit_repos,
+        person_repos,
+        listener_handle: None,
+    })
+}
+
+/// Setup a test context with a transactional database session AND start the cache notification listener
+///
+/// This function uses the shared test pool, starts a transaction,
+/// and returns a TestContext that will automatically roll back the transaction
+/// when dropped. This version DOES start the cache notification listener in the background,
+/// making it suitable for tests that need to verify cache synchronization behavior.
+///
+pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std::error::Error + Send + Sync>> {
+    let pool = get_or_init_test_pool().await?;
+    
+    let repos = PostgresRepositories::new(pool.clone());
+    
+    // Create listener for cache notifications
     let mut listener = CacheNotificationListener::new();
-    let person_repos = repos.create_person_repositories(Some(&mut listener)).await;
+    let (audit_repos, person_repos) = repos.create_all_repositories(Some(&mut listener)).await;
     
     // Start listening to notifications in background
-    let pool_clone = pool.clone();
-    let _listen_handle = tokio::spawn(async move {
-        listener.listen(&pool_clone).await.ok();
+    let listen_handle = tokio::spawn(async move {
+        // The listener will run until aborted
+        let _ = listener.listen(&*pool).await;
     });
 
     Ok(TestContext {
         audit_repos,
         person_repos,
+        listener_handle: Some(listen_handle),
     })
-}
-
-/// Setup a shared PostgresRepositories for tests that need to share state
-/// 
-/// This function is useful for tests that need to set up data in one transaction
-/// and then start a new transaction for the actual test. The returned PostgresRepositories
-/// can be used to create multiple repository instances.
-#[allow(dead_code)]
-pub async fn setup_shared_repos() -> Result<PostgresRepositories, Box<dyn std::error::Error + Send + Sync>> {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://user:password@localhost:5433/business_core_db".to_string());
-
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(30))
-        .connect(&database_url)
-        .await?;
-
-    sqlx::migrate!().run(&pool).await?;
-
-    Ok(PostgresRepositories::new(Arc::new(pool)))
 }
 
 #[cfg(test)]

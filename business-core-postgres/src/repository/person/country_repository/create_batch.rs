@@ -18,51 +18,53 @@ impl CountryRepositoryImpl {
         }
 
         let mut saved_items = Vec::new();
+        let mut indices = Vec::new();
         
-        for item in items {
-            let query = sqlx::query(
-                r#"
-                INSERT INTO country (id, iso2, name_l1, name_l2, name_l3)
-                VALUES ($1, $2, $3, $4, $5)
-                "#,
-            )
-            .bind(item.id)
-            .bind(item.iso2.as_str())
-            .bind(item.name_l1.as_str())
-            .bind(item.name_l2.as_ref().map(|s| s.as_str()))
-            .bind(item.name_l3.as_ref().map(|s| s.as_str()));
-
+        // Acquire lock once and do all database operations
+        {
             let mut tx = repo.executor.tx.lock().await;
-            if let Some(transaction) = tx.as_mut() {
-                query.execute(&mut **transaction).await?;
-            } else {
-                return Err("Transaction has been consumed".into());
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
+            for item in items {
+                // Execute main insert
+                sqlx::query(
+                    r#"
+                    INSERT INTO country (id, iso2, name_l1, name_l2, name_l3)
+                    VALUES ($1, $2, $3, $4, $5)
+                    "#,
+                )
+                .bind(item.id)
+                .bind(item.iso2.as_str())
+                .bind(item.name_l1.as_str())
+                .bind(item.name_l2.as_ref().map(|s| s.as_str()))
+                .bind(item.name_l3.as_ref().map(|s| s.as_str()))
+                .execute(&mut **transaction)
+                .await?;
+
+                // Insert into index table
+                let idx = item.to_index();
+                sqlx::query(
+                    r#"
+                    INSERT INTO country_idx (id, iso2_hash)
+                    VALUES ($1, $2)
+                    "#,
+                )
+                .bind(idx.id)
+                .bind(idx.iso2_hash)
+                .execute(&mut **transaction)
+                .await?;
+
+                indices.push(idx);
+                saved_items.push(item);
             }
-
-            // Insert into index table
-            let idx = item.to_index();
-            let idx_query = sqlx::query(
-                r#"
-                INSERT INTO country_idx (id, iso2_hash)
-                VALUES ($1, $2)
-                "#,
-            )
-            .bind(idx.id)
-            .bind(idx.iso2_hash);
-
-            let mut tx = repo.executor.tx.lock().await;
-            if let Some(transaction) = tx.as_mut() {
-                idx_query.execute(&mut **transaction).await?;
-            } else {
-                return Err("Transaction has been consumed".into());
-            }
-
-            // Update cache
+        } // Transaction lock released here
+        
+        // Update cache after releasing transaction lock
+        {
             let mut cache = repo.country_idx_cache.write();
-            cache.add(idx);
-            drop(cache);
-
-            saved_items.push(item);
+            for idx in indices {
+                cache.add(idx);
+            }
         }
 
         Ok(saved_items)

@@ -20,6 +20,8 @@ rust_decimal = { workspace = true }
 async-trait = { workspace = true }
 heapless = { version = "0.8", features = ["serde"] }
 blake3 = { version = "1.5", features = ["serde"] }
+twox-hash = "2.1.1"
+ciborium = { workspace = true }
 
 # Business Core API
 business-core-api = { path = "../business-core-api" }

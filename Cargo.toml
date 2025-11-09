@@ -23,6 +23,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rust_decimal = { version = "1.32", features = ["serde", "db-postgres", "db-diesel-postgres", "maths"] }
 thiserror = "1.0"
 anyhow = "1.0"
+ciborium = "0.2"
 
 # Async traits
 async-trait = "0.1"

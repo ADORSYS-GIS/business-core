@@ -19,22 +19,24 @@ impl CountryRepositoryImpl {
         let delete_idx_query = r#"DELETE FROM country_idx WHERE id = ANY($1)"#;
         let delete_query = r#"DELETE FROM country WHERE id = ANY($1)"#;
 
-        let mut tx = repo.executor.tx.lock().await;
-        if let Some(transaction) = tx.as_mut() {
+        let rows_affected = {
+            let mut tx = repo.executor.tx.lock().await;
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
             sqlx::query(delete_idx_query).bind(ids).execute(&mut **transaction).await?;
             let result = sqlx::query(delete_query).bind(ids).execute(&mut **transaction).await?;
-            
-            // Update cache
+            result.rows_affected() as usize
+        }; // Transaction lock released here
+        
+        // Update cache after releasing transaction lock
+        {
             let mut cache = repo.country_idx_cache.write();
             for id in ids {
                 cache.remove(id);
             }
-            drop(cache);
-            
-            Ok(result.rows_affected() as usize)
-        } else {
-            Err("Transaction has been consumed".into())
         }
+        
+        Ok(rows_affected)
     }
 }
 

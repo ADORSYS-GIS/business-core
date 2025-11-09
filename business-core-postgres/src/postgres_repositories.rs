@@ -14,7 +14,8 @@ impl PostgresRepositories {
         Self { pool }
     }
 
-    pub async fn create_audit_repositories(&self) -> AuditRepositories {
+    /// Create all repositories sharing a single transaction
+    pub async fn create_all_repositories(&self, listener: Option<&mut CacheNotificationListener>) -> (AuditRepositories, PersonRepositories) {
         let tx = self
             .pool
             .begin()
@@ -22,21 +23,13 @@ impl PostgresRepositories {
             .expect("Failed to begin transaction");
         let executor = Executor::new(tx);
 
+        // Create audit repositories with shared executor
         let audit_log_repository = Arc::new(AuditLogRepositoryImpl::new(executor.clone()));
-
-        AuditRepositories {
+        let audit_repos = AuditRepositories {
             audit_log_repository,
-        }
-    }
+        };
 
-    pub async fn create_person_repositories(&self, listener: Option<&mut CacheNotificationListener>) -> PersonRepositories {
-        let tx = self
-            .pool
-            .begin()
-            .await
-            .expect("Failed to begin transaction");
-        let executor = Executor::new(tx);
-
+        // Create person repositories with shared executor
         let country_idx_cache = Arc::new(parking_lot::RwLock::new(
             business_core_db::IdxModelCache::new(vec![]).unwrap()
         ));
@@ -54,10 +47,11 @@ impl PostgresRepositories {
             executor.clone(),
             country_idx_cache,
         ));
-
-        PersonRepositories {
+        let person_repos = PersonRepositories {
             country_repository,
-        }
+        };
+
+        (audit_repos, person_repos)
     }
 }
 

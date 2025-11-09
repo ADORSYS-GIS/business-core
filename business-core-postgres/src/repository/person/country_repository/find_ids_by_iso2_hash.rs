@@ -22,7 +22,7 @@ mod tests {
     use crate::test_helper::setup_test_context;
     use business_core_db::models::person::country::CountryModel;
     use business_core_db::repository::create_batch::CreateBatch;
-    use crate::utils::hash_as_i64;
+    use business_core_db::utils::hash_as_i64;
     use heapless::String as HeaplessString;
     use uuid::Uuid;
 
