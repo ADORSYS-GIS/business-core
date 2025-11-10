@@ -11,7 +11,7 @@ impl CountryRepositoryImpl {
         let cache = self.country_idx_cache.read();
         let result = cache
             .get_by_i64_index("iso2_hash", &iso2_hash)
-            .map(|ids| ids.clone())
+            .cloned()
             .unwrap_or_default();
         Ok(result)
     }

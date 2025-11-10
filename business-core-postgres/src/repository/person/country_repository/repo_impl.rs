@@ -36,7 +36,7 @@ impl CountryRepositoryImpl {
         
         let mut idx_models = Vec::with_capacity(rows.len());
         for row in rows {
-            idx_models.push(CountryIdxModel::try_from_row(&row).map_err(|e| sqlx::Error::Decode(e.into()))?);
+            idx_models.push(CountryIdxModel::try_from_row(&row).map_err(sqlx::Error::Decode)?);
         }
         Ok(idx_models)
     }

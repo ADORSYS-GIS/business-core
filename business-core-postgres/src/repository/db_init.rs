@@ -62,7 +62,7 @@ async fn execute_sql_files_in_order(
 ) -> Result<(), sqlx::Error> {
     // Read directory entries
     let mut entries: Vec<_> = fs::read_dir(dir)
-        .map_err(|e| sqlx::Error::Io(e))?
+        .map_err(sqlx::Error::Io)?
         .filter_map(|entry| entry.ok())
         .filter(|entry| {
             entry.path().extension().and_then(|s| s.to_str()) == Some("sql")
@@ -83,7 +83,7 @@ async fn execute_sql_files_in_order(
     for entry in entries {
         let path = entry.path();
         let sql = fs::read_to_string(&path)
-            .map_err(|e| sqlx::Error::Io(e))?;
+            .map_err(sqlx::Error::Io)?;
         
         sqlx::raw_sql(&sql).execute(pool).await?;
     }

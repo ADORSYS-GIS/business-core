@@ -130,7 +130,7 @@ impl<T> Page<T> {
         if self.limit == 0 {
             1
         } else {
-            (self.total + self.limit - 1) / self.limit // Ceiling division
+            self.total.div_ceil(self.limit)
         }
     }
 

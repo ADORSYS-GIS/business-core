@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "business-core-api",
     "business-core-db",
     "business-core-postgres",
 ]
