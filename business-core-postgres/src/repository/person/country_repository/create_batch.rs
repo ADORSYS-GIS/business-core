@@ -84,10 +84,12 @@ impl CreateBatch<Postgres, CountryModel> for CountryRepositoryImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_helper::setup_test_context;
+    use crate::test_helper::{setup_test_context, setup_test_context_and_listen};
     use business_core_db::models::person::country::CountryModel;
+    use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use heapless::String as HeaplessString;
+    use tokio::time::{sleep, Duration};
     use uuid::Uuid;
 
     fn create_test_country(iso2: &str, name: &str) -> CountryModel {
@@ -136,6 +138,90 @@ mod tests {
 
         assert_eq!(saved_countries.len(), 0);
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_country_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        
+        // Setup test context with the handler
+        let ctx = setup_test_context_and_listen().await?;
+        let pool = ctx.pool();
+
+        // Create a test country with a unique ISO2 code to avoid conflicts
+        let unique_iso2 = {
+            let uuid = uuid::Uuid::new_v4();
+            let uuid_bytes = uuid.as_bytes();
+            let char1 = (b'A' + (uuid_bytes[0] % 26)) as char;
+            let char2 = (b'A' + (uuid_bytes[1] % 26)) as char;
+            format!("{}{}", char1, char2)
+        };
+        let test_country = create_test_country(&unique_iso2[..2], "Test Country");
+        let country_idx = test_country.to_index();
+    
+        // Give listener more time to start and establish connection
+        // The listener needs time to connect and execute LISTEN command
+        sleep(Duration::from_millis(2000)).await;
+    
+        // First insert the country record (required by foreign key)
+        sqlx::query("INSERT INTO country (id, iso2, name_l1, name_l2, name_l3) VALUES ($1, $2, $3, $4, $5)")
+            .bind(test_country.id)
+            .bind(test_country.iso2.as_str())
+            .bind(test_country.name_l1.as_str())
+            .bind(test_country.name_l2.as_ref().map(|s| s.as_str()))
+            .bind(test_country.name_l3.as_ref().map(|s| s.as_str()))
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert country");
+    
+        // Then insert the country index directly into the database using raw SQL
+        sqlx::query("INSERT INTO country_idx (id, iso2_hash) VALUES ($1, $2)")
+            .bind(country_idx.id)
+            .bind(country_idx.iso2_hash)
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert country index");
+
+        // Give more time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        let country_repo = &ctx.person_repos().country_repository;
+
+        // Verify the cache was updated via the trigger
+        let cache = country_repo.country_idx_cache.read();
+        assert!(
+            cache.contains_primary(&country_idx.id),
+            "Country should be in cache after insert"
+        );
+    
+        let cached_country = cache.get_by_primary(&country_idx.id);
+        assert!(cached_country.is_some(), "Country should be retrievable from cache");
+        
+        // Verify the cached data matches
+        let cached_country = cached_country.unwrap();
+        assert_eq!(cached_country.id, country_idx.id);
+        assert_eq!(cached_country.iso2_hash, country_idx.iso2_hash);
+        
+        // Drop the read lock before proceeding to allow notification handler to process
+        drop(cache);
+
+        // Delete the records from the database, will cascade delete country_idx
+        sqlx::query("DELETE FROM country WHERE id = $1")
+            .bind(country_idx.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to delete country");
+
+        // Give more time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        // Verify the cache entry was removed
+        let cache = country_repo.country_idx_cache.read();
+        assert!(
+            !cache.contains_primary(&country_idx.id),
+            "Country should be removed from cache after delete"
+        );
+        
         Ok(())
     }
 }

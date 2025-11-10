@@ -14,11 +14,11 @@ use tokio::sync::OnceCell;
 // Flag to track if DB initialization has been done
 static DB_INITIALIZED: OnceCell<()> = OnceCell::const_new();
 
-/// Initialize database and get a test pool with 2 connections
+/// Initialize database and get a test pool with specified number of connections
 ///
 /// This function uses a special 2-connection pool for DB initialization (only on first call),
-/// then returns a new 2-connection pool for each invocation.
-async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>> {
+/// then returns a new pool with the specified number of connections for each invocation.
+async fn get_or_init_test_pool_with_size(max_connections: u32) -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost:5433/business_core_db".to_string());
 
@@ -32,16 +32,18 @@ async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Erro
             .await?;
 
         // Init DB
+        crate::repository::db_init::cleanup_database(&init_pool).await?;
+        postgres_index_cache::cleanup_cache_triggers(&init_pool).await?;
         postgres_index_cache::init_cache_triggers(&init_pool).await?;
-        sqlx::migrate!().run(&init_pool).await?;
+        crate::repository::db_init::init_database(&init_pool).await?;
 
         init_pool.close().await;
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     }).await?;
 
-    // Create and return a new 2-connection pool for each call
+    // Create and return a new pool with specified connections for each call
     let pool = PgPoolOptions::new()
-        .max_connections(2)
+        .max_connections(max_connections)
         .min_connections(1)
         .acquire_timeout(Duration::from_secs(10))
         .idle_timeout(Some(Duration::from_secs(20)))
@@ -61,6 +63,14 @@ async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Erro
     Ok(Arc::new(pool))
 }
 
+/// Initialize database and get a test pool with 2 connections
+///
+/// This function uses a special 2-connection pool for DB initialization (only on first call),
+/// then returns a new 2-connection pool for each invocation.
+async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>> {
+    get_or_init_test_pool_with_size(2).await
+}
+
 /// Test context that provides a transactional database session
 ///
 /// This struct holds audit and person repositories that will be automatically
@@ -68,6 +78,7 @@ async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Erro
 pub struct TestContext {
     pub audit_repos: AuditRepositories,
     pub person_repos: PersonRepositories,
+    pub pool: Arc<PgPool>,
     listener_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
@@ -80,6 +91,11 @@ impl TestContext {
     /// Get the person repositories from the context
     pub fn person_repos(&self) -> &PersonRepositories {
         &self.person_repos
+    }
+
+    /// Get the pool from the context
+    pub fn pool(&self) -> &Arc<PgPool> {
+        &self.pool
     }
 }
 impl Drop for TestContext {
@@ -114,7 +130,7 @@ impl Drop for TestContext {
 pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Error + Send + Sync>> {
     let pool = get_or_init_test_pool().await?;
     
-    let repos = PostgresRepositories::new(pool);
+    let repos = PostgresRepositories::new(pool.clone());
     
     // Use the new method that creates both repositories with a SHARED transaction
     // This prevents connection exhaustion by using only 1 transaction instead of 2
@@ -123,6 +139,7 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     Ok(TestContext {
         audit_repos,
         person_repos,
+        pool,
         listener_handle: None,
     })
 }
@@ -135,26 +152,31 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
 /// making it suitable for tests that need to verify cache synchronization behavior.
 ///
 pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std::error::Error + Send + Sync>> {
-    let pool = get_or_init_test_pool().await?;
+    // Use 4 connections: 1 for transaction, 1 for listener, 2 for raw queries
+    let pool = get_or_init_test_pool_with_size(10).await?;
     
     let repos = PostgresRepositories::new(pool.clone());
     
     // Create listener for cache notifications
     let mut listener = CacheNotificationListener::new();
+    
     let (audit_repos, person_repos) = repos.create_all_repositories(Some(&mut listener)).await;
     
     // Start listening to notifications in background
+    let pool_clone = pool.clone();
     let listen_handle = tokio::spawn(async move {
         // The listener will run until aborted
-        let _ = listener.listen(&*pool).await;
+        let _ = listener.listen(&*pool_clone).await;
     });
 
     Ok(TestContext {
         audit_repos,
         person_repos,
+        pool,
         listener_handle: Some(listen_handle),
     })
 }
+
 
 #[cfg(test)]
 mod tests {
