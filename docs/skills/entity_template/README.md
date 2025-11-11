@@ -1,0 +1,1148 @@
+# Entity Template Skill
+
+## Overview
+
+This skill generates complete database access modules for entities in the business-core architecture. It creates a consistent pattern of models, repositories, cache integration, and tests based on the Country entity template.
+
+## Purpose
+
+Generate production-ready database access layers with:
+- ✅ **CRUD operations** (Create, Read, Update, Delete)
+- ✅ **Batch operations** for performance
+- ✅ **Application-layer indexing** with hash-based lookups
+- ✅ **Cache integration** with transaction-aware updates
+- ✅ **Comprehensive testing** (unit + integration)
+- ✅ **Audit logging** support
+
+## Template Reference
+
+The skill is based on the Country entity pattern:
+- **Model**: `business-core/business-core-db/src/models/person/country.rs`
+- **Repository**: `business-core/business-core-postgres/src/repository/person/country_repository/`
+
+---
+
+## Input Parameters
+
+When invoking this skill, provide the following parameters:
+
+### 1. Entity Definition
+
+```yaml
+entity:
+  name: "Country"              # Entity name (PascalCase)
+  module: "person"             # Module name (snake_case)
+  table_name: "country"        # Database table name
+  idx_table_name: "country_idx" # Index table name
+```
+
+### 2. Fields Specification
+
+```yaml
+fields:
+  - name: "id"
+    type: "Uuid"
+    nullable: false
+    primary_key: true
+    
+  - name: "iso2"
+    type: "HeaplessString<2>"
+    nullable: false
+    indexed: true              # Will create hash index
+    
+  - name: "name_l1"
+    type: "HeaplessString<100>"
+    nullable: false
+    
+  - name: "name_l2"
+    type: "HeaplessString<100>"
+    nullable: true
+    
+  - name: "name_l3"
+    type: "HeaplessString<100>"
+    nullable: true
+```
+
+### 3. Index Keys
+
+```yaml
+index_keys:
+  i64_keys:
+    - field: "iso2"
+      index_name: "iso2_hash"
+      hash_function: "hash_as_i64"
+  
+  uuid_keys: []  # Optional UUID-based indexes
+```
+
+### 4. Custom Query Methods
+
+```yaml
+custom_queries:
+  - name: "find_ids_by_iso2_hash"
+    parameters:
+      - name: "iso2_hash"
+        type: "i64"
+    return_type: "Vec<Uuid>"
+    cache_based: true
+```
+
+---
+
+## Generated Artifacts
+
+### 1. Model File Structure
+
+**Location**: `business-core/business-core-db/src/models/{module}/{entity}.rs`
+
+```rust
+use heapless::String as HeaplessString;
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
+use std::collections::HashMap;
+use crate::{HasPrimaryKey, IdxModelCache, Indexable};
+use crate::models::{IndexAware, Identifiable, Index};
+use crate::utils::hash_as_i64;
+
+/// # Documentation
+/// - {Entity description}
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct {Entity}Model {
+    pub id: Uuid,
+    // ... fields from specification
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct {Entity}IdxModel {
+    pub id: Uuid,
+    // ... index keys from specification
+}
+
+// Trait implementations
+impl HasPrimaryKey for {Entity}IdxModel {
+    fn primary_key(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Identifiable for {Entity}Model {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl IndexAware for {Entity}Model {
+    type IndexType = {Entity}IdxModel;
+    
+    fn to_index(&self) -> Self::IndexType {
+        // Calculate hashes for indexed fields
+        {Entity}IdxModel {
+            id: self.id,
+            // ... computed index fields
+        }
+    }
+}
+
+impl Identifiable for {Entity}IdxModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Index for {Entity}IdxModel {}
+
+impl Indexable for {Entity}IdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        let mut keys = HashMap::new();
+        // ... i64 index mappings
+        keys
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        HashMap::new() // or UUID index mappings
+    }
+}
+
+pub type {Entity}IdxModelCache = IdxModelCache<{Entity}IdxModel>;
+```
+
+### 2. Repository Implementation
+
+**Location**: `business-core/business-core-postgres/src/repository/{module}/{entity}_repository/`
+
+#### Module Structure
+
+```
+{entity}_repository/
+├── mod.rs
+├── repo_impl.rs
+├── create_batch.rs
+├── load_batch.rs
+├── update_batch.rs
+├── delete_batch.rs
+├── exist_by_ids.rs
+└── {custom_query_methods}.rs
+```
+
+#### repo_impl.rs Pattern
+
+```rust
+use business_core_db::models::{module}::{entity}::{Entity}IdxModel, {Entity}Model};
+use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
+use postgres_unit_of_work::Executor;
+use std::sync::Arc;
+use sqlx::{postgres::PgRow, Row};
+use std::error::Error;
+
+pub struct {Entity}RepositoryImpl {
+    pub executor: Executor,
+    pub {entity}_idx_cache: Arc<parking_lot::RwLock<business_core_db::IdxModelCache<{Entity}IdxModel>>>,
+}
+
+impl {Entity}RepositoryImpl {
+    pub fn new(
+        executor: Executor,
+        {entity}_idx_cache: Arc<parking_lot::RwLock<business_core_db::IdxModelCache<{Entity}IdxModel>>>,
+    ) -> Self {
+        Self {
+            executor,
+            {entity}_idx_cache,
+        }
+    }
+
+    pub async fn load_all_{entity}_idx(
+        executor: &Executor,
+    ) -> Result<Vec<{Entity}IdxModel>, sqlx::Error> {
+        let query = sqlx::query("SELECT * FROM {table_name}_idx");
+        let rows = {
+            let mut tx = executor.tx.lock().await;
+            if let Some(transaction) = tx.as_mut() {
+                query.fetch_all(&mut **transaction).await?
+            } else {
+                return Err(sqlx::Error::PoolTimedOut);
+            }
+        };
+        
+        let mut idx_models = Vec::with_capacity(rows.len());
+        for row in rows {
+            idx_models.push({Entity}IdxModel::try_from_row(&row).map_err(sqlx::Error::Decode)?);
+        }
+        Ok(idx_models)
+    }
+}
+
+impl TryFromRow<PgRow> for {Entity}Model {
+    fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        Ok({Entity}Model {
+            id: row.get("id"),
+            // ... field mappings with appropriate helper functions
+        })
+    }
+}
+
+impl TryFromRow<PgRow> for {Entity}IdxModel {
+    fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        Ok({Entity}IdxModel {
+            id: row.get("{entity}_id"),
+            // ... index field mappings
+        })
+    }
+}
+```
+
+#### create_batch.rs Pattern
+
+```rust
+use async_trait::async_trait;
+use business_core_db::models::{module}::{entity}::{Entity}Model;
+use business_core_db::repository::create_batch::CreateBatch;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+use business_core_db::models::index_aware::IndexAware;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub(super) async fn create_batch_impl(
+        repo: &{Entity}RepositoryImpl,
+        items: Vec<{Entity}Model>,
+    ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut saved_items = Vec::new();
+        let mut indices = Vec::new();
+        
+        // Acquire lock once and do all database operations
+        {
+            let mut tx = repo.executor.tx.lock().await;
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
+            for item in items {
+                // Execute main insert
+                sqlx::query(
+                    r#"
+                    INSERT INTO {table_name} ({field_list})
+                    VALUES ({value_placeholders})
+                    "#,
+                )
+                // ... bind all fields
+                .execute(&mut **transaction)
+                .await?;
+
+                // Insert into index table
+                let idx = item.to_index();
+                sqlx::query(
+                    r#"
+                    INSERT INTO {table_name}_idx ({index_field_list})
+                    VALUES ({index_value_placeholders})
+                    "#,
+                )
+                // ... bind index fields
+                .execute(&mut **transaction)
+                .await?;
+
+                indices.push(idx);
+                saved_items.push(item);
+            }
+        } // Transaction lock released here
+        
+        // Update cache after releasing transaction lock
+        {
+            let mut cache = repo.{entity}_idx_cache.write();
+            for idx in indices {
+                cache.add(idx);
+            }
+        }
+
+        Ok(saved_items)
+    }
+}
+
+#[async_trait]
+impl CreateBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
+    async fn create_batch(
+        &self,
+        items: Vec<{Entity}Model>,
+        _audit_log_id: Uuid,
+    ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
+        Self::create_batch_impl(self, items).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // ... comprehensive tests
+}
+```
+
+#### load_batch.rs Pattern
+
+```rust
+use async_trait::async_trait;
+use business_core_db::models::{module}::{entity}::{Entity}Model;
+use business_core_db::repository::load_batch::LoadBatch;
+use crate::utils::TryFromRow;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub(super) async fn load_batch_impl(
+        repo: &{Entity}RepositoryImpl,
+        ids: &[Uuid],
+    ) -> Result<Vec<Option<{Entity}Model>>, Box<dyn Error + Send + Sync>> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        
+        let query = r#"SELECT * FROM {table_name} WHERE id = ANY($1)"#;
+        let rows = {
+            let mut tx = repo.executor.tx.lock().await;
+            if let Some(transaction) = tx.as_mut() {
+                sqlx::query(query).bind(ids).fetch_all(&mut **transaction).await?
+            } else {
+                return Err("Transaction has been consumed".into());
+            }
+        };
+        
+        let mut item_map = std::collections::HashMap::new();
+        for row in rows {
+            let item = {Entity}Model::try_from_row(&row)?;
+            item_map.insert(item.id, item);
+        }
+        
+        let mut result = Vec::with_capacity(ids.len());
+        for id in ids {
+            result.push(item_map.remove(id));
+        }
+        Ok(result)
+    }
+}
+
+#[async_trait]
+impl LoadBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
+    async fn load_batch(&self, ids: &[Uuid]) -> Result<Vec<Option<{Entity}Model>>, Box<dyn Error + Send + Sync>> {
+        Self::load_batch_impl(self, ids).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // ... tests for load_batch
+}
+```
+
+#### update_batch.rs Pattern
+
+```rust
+use async_trait::async_trait;
+use business_core_db::models::{module}::{entity}::{Entity}Model;
+use business_core_db::models::index_aware::IndexAware;
+use business_core_db::repository::update_batch::UpdateBatch;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub(super) async fn update_batch_impl(
+        &self,
+        items: Vec<{Entity}Model>,
+    ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut updated_items = Vec::new();
+        let mut indices = Vec::new();
+        
+        // Acquire lock once and do all database operations
+        {
+            let mut tx = self.executor.tx.lock().await;
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
+            for item in items {
+                // Execute update
+                sqlx::query(
+                    r#"
+                    UPDATE {table_name}
+                    SET {field_updates}
+                    WHERE id = $1
+                    "#,
+                )
+                // ... bind fields
+                .execute(&mut **transaction)
+                .await?;
+
+                indices.push((item.id, item.to_index()));
+                updated_items.push(item);
+            }
+        } // Transaction lock released here
+        
+        // Update cache after releasing transaction lock
+        {
+            let mut cache = self.{entity}_idx_cache.write();
+            for (id, idx) in indices {
+                cache.remove(&id);
+                cache.add(idx);
+            }
+        }
+
+        Ok(updated_items)
+    }
+}
+
+#[async_trait]
+impl UpdateBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
+    async fn update_batch(
+        &self,
+        items: Vec<{Entity}Model>,
+        _audit_log_id: Uuid,
+    ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
+        Self::update_batch_impl(self, items).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // ... tests for update_batch
+}
+```
+
+#### delete_batch.rs Pattern
+
+```rust
+use async_trait::async_trait;
+use business_core_db::repository::delete_batch::DeleteBatch;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub(super) async fn delete_batch_impl(
+        repo: &{Entity}RepositoryImpl,
+        ids: &[Uuid],
+    ) -> Result<usize, Box<dyn Error + Send + Sync>> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+
+        // Delete from index table first
+        let delete_idx_query = r#"DELETE FROM {table_name}_idx WHERE id = ANY($1)"#;
+        let delete_query = r#"DELETE FROM {table_name} WHERE id = ANY($1)"#;
+
+        let rows_affected = {
+            let mut tx = repo.executor.tx.lock().await;
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
+            sqlx::query(delete_idx_query).bind(ids).execute(&mut **transaction).await?;
+            let result = sqlx::query(delete_query).bind(ids).execute(&mut **transaction).await?;
+            result.rows_affected() as usize
+        }; // Transaction lock released here
+        
+        // Update cache after releasing transaction lock
+        {
+            let mut cache = repo.{entity}_idx_cache.write();
+            for id in ids {
+                cache.remove(id);
+            }
+        }
+        
+        Ok(rows_affected)
+    }
+}
+
+#[async_trait]
+impl DeleteBatch<Postgres> for {Entity}RepositoryImpl {
+    async fn delete_batch(
+        &self,
+        ids: &[Uuid],
+        _audit_log_id: Uuid,
+    ) -> Result<usize, Box<dyn Error + Send + Sync>> {
+        Self::delete_batch_impl(self, ids).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // ... tests for delete_batch
+}
+```
+
+#### exist_by_ids.rs Pattern
+
+```rust
+use async_trait::async_trait;
+use business_core_db::repository::exist_by_ids::ExistByIds;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub(super) async fn exist_by_ids_impl(
+        repo: &{Entity}RepositoryImpl,
+        ids: &[Uuid],
+    ) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
+        let mut result = Vec::new();
+        let cache = repo.{entity}_idx_cache.read();
+        for &id in ids {
+            result.push((id, cache.contains_primary(&id)));
+        }
+        Ok(result)
+    }
+}
+
+#[async_trait]
+impl ExistByIds<Postgres> for {Entity}RepositoryImpl {
+    async fn exist_by_ids(&self, ids: &[Uuid]) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
+        Self::exist_by_ids_impl(self, ids).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // ... tests for exist_by_ids
+}
+```
+
+#### Custom Query Methods Pattern
+
+For cache-based lookups (e.g., `find_ids_by_iso2_hash.rs`):
+
+```rust
+use std::error::Error;
+use uuid::Uuid;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub async fn find_ids_by_{index_name}(
+        &self,
+        {index_name}: i64,
+    ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
+        let cache = self.{entity}_idx_cache.read();
+        let result = cache
+            .get_by_i64_index("{index_name}", &{index_name})
+            .cloned()
+            .unwrap_or_default();
+        Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // ... tests for custom query method
+}
+```
+
+---
+
+## Critical Patterns
+
+### 1. Transaction Lock Management
+
+**ALWAYS follow this pattern:**
+
+```rust
+// 1. Acquire lock once
+{
+    let mut tx = self.executor.tx.lock().await;
+    let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+    
+    // 2. Perform all database operations
+    // ...
+} // 3. Release lock immediately
+
+// 4. Update cache AFTER lock is released
+{
+    let mut cache = self.{entity}_idx_cache.write();
+    // ... cache operations
+}
+```
+
+**Why?** Prevents deadlocks and improves concurrency.
+
+### 2. Cache Synchronization
+
+**Pattern for each operation:**
+
+- **Create**: `cache.add(idx)`
+- **Update**: `cache.remove(&id); cache.add(idx)`
+- **Delete**: `cache.remove(&id)`
+- **Read**: Use `cache.contains_primary()` or `cache.get_by_*_index()`
+
+### 3. Error Handling
+
+```rust
+// Use Box<dyn Error + Send + Sync> for all repository methods
+Result<T, Box<dyn Error + Send + Sync>>
+
+// Check for transaction consumption
+let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+```
+
+### 4. Field Mapping Helpers
+
+For HeaplessString fields:
+
+```rust
+use crate::utils::{get_heapless_string, get_optional_heapless_string};
+
+// Non-nullable
+field_name: get_heapless_string(row, "field_name")?,
+
+// Nullable
+optional_field: get_optional_heapless_string(row, "optional_field")?,
+```
+
+### 5. Index Hash Computation
+
+```rust
+use crate::utils::hash_as_i64;
+
+fn to_index(&self) -> Self::IndexType {
+    let field_hash = hash_as_i64(&self.field.as_str());
+    
+    {Entity}IdxModel {
+        id: self.id,
+        field_hash,
+    }
+}
+```
+
+---
+
+## Testing Patterns
+
+### Test Utility Module
+
+**Location**: `business-core/business-core-postgres/src/repository/{module}/{entity}_repository/test_utils.rs`
+
+Test utilities should be organized in a dedicated module with the `#[cfg(test)]` attribute to ensure they're only compiled during testing:
+
+```rust
+#[cfg(test)]
+pub mod test_utils {
+    use business_core_db::models::{module}::{entity}::{Entity}Model;
+    use heapless::String as HeaplessString;
+    use uuid::Uuid;
+
+    /// Creates a test {entity} with the specified parameters
+    pub fn create_test_{entity}(/* relevant fields */) -> {Entity}Model {
+        {Entity}Model {
+            id: Uuid::new_v4(),
+            // ... initialize fields with HeaplessString::try_from().unwrap()
+        }
+    }
+}
+```
+
+**Example from Country entity:**
+
+```rust
+#[cfg(test)]
+pub mod test_utils {
+    use business_core_db::models::person::country::CountryModel;
+    use heapless::String as HeaplessString;
+    use uuid::Uuid;
+
+    pub fn create_test_country(iso2: &str, name: &str) -> CountryModel {
+        CountryModel {
+            id: Uuid::new_v4(),
+            iso2: HeaplessString::try_from(iso2).unwrap(),
+            name_l1: HeaplessString::try_from(name).unwrap(),
+            name_l2: None,
+            name_l3: None,
+        }
+    }
+}
+```
+
+**Example from CountrySubdivision entity (with foreign key):**
+
+```rust
+#[cfg(test)]
+pub mod test_utils {
+    use business_core_db::models::person::country::CountryModel;
+    use business_core_db::models::person::country_subdivision::CountrySubdivisionModel;
+    use heapless::String as HeaplessString;
+    use uuid::Uuid;
+
+    pub fn create_test_country(iso2: &str, name: &str) -> CountryModel {
+        CountryModel {
+            id: Uuid::new_v4(),
+            iso2: HeaplessString::try_from(iso2).unwrap(),
+            name_l1: HeaplessString::try_from(name).unwrap(),
+            name_l2: None,
+            name_l3: None,
+        }
+    }
+
+    pub fn create_test_country_subdivision(
+        country_id: Uuid,
+        code: &str,
+        name: &str,
+    ) -> CountrySubdivisionModel {
+        CountrySubdivisionModel {
+            id: Uuid::new_v4(),
+            country_id,
+            code: HeaplessString::try_from(code).unwrap(),
+            name_l1: HeaplessString::try_from(name).unwrap(),
+            name_l2: None,
+            name_l3: None,
+        }
+    }
+}
+```
+
+### Test Helper Best Practices
+
+1. **Use `#[cfg(test)]`**: Ensures test utilities are only compiled during testing
+2. **Create factory functions**: Provide simple constructors that accept only the essential parameters
+3. **Use sensible defaults**: Optional fields should default to `None` unless testing requires them
+4. **Accept string slices**: Use `&str` parameters and convert to `HeaplessString` internally
+5. **Use `.unwrap()`**: Safe in test code since test data is controlled
+6. **Include dependency helpers**: For entities with foreign keys, include helper functions to create parent entities
+7. **Keep it simple**: Each helper should create a single valid entity with minimal complexity
+
+### Standard Test Cases
+
+For **each operation**, include tests for:
+
+1. **Happy path**: Normal operation succeeds
+2. **Empty batch**: Handles empty input gracefully
+3. **Non-existent entities**: Handles missing entities correctly
+4. **Cache validation**: Verifies cache is updated correctly
+
+### Example Test Structure
+
+```rust
+#[cfg(test)]
+mod tests {
+    use crate::test_helper::setup_test_context;
+    use business_core_db::models::{module}::{entity}::{Entity}Model;
+    use business_core_db::repository::create_batch::CreateBatch;
+    use uuid::Uuid;
+
+    fn create_test_{entity}(/* params */) -> {Entity}Model {
+        // ... implementation
+    }
+
+    #[tokio::test]
+    async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let {entity}_repo = &ctx.{module}_repos().{entity}_repository;
+
+        let items = vec![/* test data */];
+        let audit_log_id = Uuid::new_v4();
+        let saved = {entity}_repo.create_batch(items, audit_log_id).await?;
+
+        assert_eq!(saved.len(), /* expected */);
+        // ... additional assertions
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_batch_empty() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // ... test empty batch
+        Ok(())
+    }
+
+    // ... more tests
+}
+```
+
+---
+
+## Module Registration
+
+### 1. Update models/mod.rs
+
+```rust
+pub mod {module};
+
+// In the file where entity is defined:
+pub mod {entity};
+pub use {entity}::*;
+```
+
+### 2. Update repository mod.rs
+
+```rust
+pub mod {entity}_repository;
+pub use {entity}_repository::{Entity}RepositoryImpl;
+```
+
+---
+
+## Type Mapping Guide
+
+### Rust Types → SQL Types
+
+| Rust Type | SQL Type | Nullable | Helper Function |
+|-----------|----------|----------|----------------|
+| `Uuid` | `UUID` | No | `row.get("field")` |
+| `HeaplessString<N>` | `VARCHAR(N)` | No | `get_heapless_string(row, "field")?` |
+| `Option<HeaplessString<N>>` | `VARCHAR(N)` | Yes | `get_optional_heapless_string(row, "field")?` |
+| `i64` | `BIGINT` | No | `row.get("field")` |
+| `Option<i64>` | `BIGINT` | Yes | `row.try_get("field").ok()` |
+| `String` | `TEXT` | No | `row.get("field")` |
+| `Option<String>` | `TEXT` | Yes | `row.get("field")` |
+
+### Index Key Types
+
+- **i64 keys**: Use for hash-based lookups (strings, enums)
+- **UUID keys**: Use for foreign key relationships
+
+---
+
+## Database Schema Files
+
+### Migration File Pattern
+
+**Path**: `business-core/business-core-postgres/migrations/{number}_initial_schema_{module}_{entity}.sql`
+
+```sql
+-- Migration: Initial {Entity} Schema
+-- Description: Creates {entity}-related tables and indexes
+
+-- {Entity} Table
+CREATE TABLE IF NOT EXISTS {table_name} (
+    id UUID PRIMARY KEY,
+    -- ... other fields
+);
+
+-- {Entity} Index Table
+CREATE TABLE IF NOT EXISTS {table_name}_idx (
+    id UUID PRIMARY KEY REFERENCES {table_name}(id) ON DELETE CASCADE,
+    -- ... index fields
+);
+
+-- Create trigger for {table_name}_idx table to notify listeners of changes
+DROP TRIGGER IF EXISTS {table_name}_idx_notify ON {table_name}_idx;
+CREATE TRIGGER {table_name}_idx_notify
+    AFTER INSERT OR UPDATE OR DELETE ON {table_name}_idx
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_cache_change();
+```
+
+### Cleanup File Pattern
+
+**Path**: `business-core/business-core-postgres/cleanup/{number}_cleanup_{module}_{entity}.sql`
+
+```sql
+-- Cleanup: Initial {Entity} Schema
+-- Description: Removes all artifacts created by {number}_initial_schema_{module}_{entity}.sql
+
+-- Drop trigger first
+DROP TRIGGER IF EXISTS {table_name}_idx_notify ON {table_name}_idx;
+
+-- Drop tables (index table first due to foreign key constraint)
+DROP TABLE IF EXISTS {table_name}_idx CASCADE;
+DROP TABLE IF EXISTS {table_name} CASCADE;
+```
+
+---
+
+## Usage Example
+
+### Complete Generation Request
+
+```
+Generate a database access module for a "Locality" entity with the following specification:
+
+Entity: Locality
+Module: person
+Table: locality
+Index Table: locality_idx
+
+Fields:
+- id: Uuid (primary key)
+- code: HeaplessString<20> (indexed)
+- name: HeaplessString<100>
+- country_subdivision_id: Uuid (indexed)
+- description: Option<HeaplessString<500>>
+
+Index Keys:
+- code_hash: i64 (hash of code field)
+- country_subdivision_id: Uuid (direct UUID index)
+
+Custom Query Methods:
+- find_ids_by_code_hash(code_hash: i64) -> Vec<Uuid>
+- find_ids_by_country_subdivision_id(country_subdivision_id: Uuid) -> Vec<Uuid>
+
+Database Files:
+- Migration: migrations/004_initial_schema_person_locality.sql
+- Cleanup: cleanup/004_cleanup_person_locality.sql
+```
+
+### Expected Output
+
+The skill should generate:
+
+1. `business-core/business-core-db/src/models/person/locality.rs` (model + index model)
+2. `business-core/business-core-postgres/src/repository/person/locality_repository/` (full repository module)
+3. All standard CRUD operations with tests
+4. Custom query methods with tests
+5. Database migration SQL file
+6. Database cleanup SQL file
+
+---
+
+## Best Practices
+
+### ✅ DO:
+
+- Always use the same transaction lock pattern
+- Update cache after releasing transaction lock
+- Handle empty batches gracefully
+- Use type-appropriate helper functions for field mapping
+- Include comprehensive tests for all operations
+- Use `pub(super)` for implementation methods
+- Follow the module structure exactly
+
+### ❌ DON'T:
+
+- Hold transaction and cache locks simultaneously
+- Modify cache before database operations complete
+- Skip empty batch checks
+- Use direct string parsing without helper functions
+- Forget to implement all trait methods
+- Mix sync and async operations incorrectly
+- Ignore test coverage for edge cases
+
+---
+
+## Validation Checklist
+
+After generating code, verify:
+
+- [ ] All trait implementations are present
+- [ ] Transaction lock pattern is correct
+- [ ] Cache is updated after database operations
+- [ ] Empty batch handling is included
+- [ ] All fields are mapped correctly with proper helpers
+- [ ] Index computation in `to_index()` is correct
+- [ ] Custom query methods use cache correctly
+- [ ] Tests cover happy path, empty, and error cases
+- [ ] Module registration is complete
+- [ ] Code compiles without errors
+- [ ] All imports are correct
+- [ ] Database migration file is created
+- [ ] Database cleanup file is created
+- [ ] Database trigger for cache notification is included
+
+---
+
+## Advanced Features
+
+### Multi-field Indexes
+
+For entities with multiple indexed fields:
+
+```rust
+impl Indexable for {Entity}IdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        let mut keys = HashMap::new();
+        keys.insert("field1_hash".to_string(), Some(self.field1_hash));
+        keys.insert("field2_hash".to_string(), Some(self.field2_hash));
+        keys
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        let mut keys = HashMap::new();
+        keys.insert("foreign_key_id".to_string(), Some(self.foreign_key_id));
+        keys
+    }
+}
+```
+
+### Composite Custom Queries
+
+For queries combining multiple indexes:
+
+```rust
+pub async fn find_by_field1_and_field2(
+    &self,
+    field1_hash: i64,
+    field2_value: Uuid,
+) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
+    let cache = self.{entity}_idx_cache.read();
+    
+    // Get candidates from first index
+    let candidates = cache
+        .get_by_i64_index("field1_hash", &field1_hash)
+        .cloned()
+        .unwrap_or_default();
+    
+    // Filter by second index
+    let result: Vec<Uuid> = candidates
+        .into_iter()
+        .filter(|id| {
+            cache.get_by_primary(id)
+                .map(|idx| idx.field2_value == field2_value)
+                .unwrap_or(false)
+        })
+        .collect();
+    
+    Ok(result)
+}
+```
+
+---
+
+## Important Notes
+
+### Repository Layer vs Application Layer
+
+**Repository methods should:**
+- Perform single, atomic data operations
+- Use cache for index lookups
+- Return IDs or simple models
+- Be composable building blocks
+
+**DO implement in repository:**
+```rust
+// Simple cache-based ID lookups
+pub async fn find_ids_by_{index}(&self, value: T) -> Result<Vec<Uuid>, Error>
+
+// Batch loading by IDs
+pub async fn load_batch(&self, ids: &[Uuid]) -> Result<Vec<Option<Model>>, Error>
+```
+
+**DON'T implement in repository:**
+```rust
+// Composite operations combining multiple repository methods
+pub async fn find_by_{index}(&self, value: T) -> Result<Vec<Model>, Error> {
+    let ids = self.find_ids_by_{index}(value).await?;
+    let results = self.load_batch(&ids).await?;
+    Ok(results.into_iter().flatten().collect())
+}
+```
+
+**Instead, compose at service/application layer:**
+```rust
+// In your service or application code
+let ids = repo.find_ids_by_country_id(country_id).await?;
+let subdivisions = repo.load_batch(&ids).await?;
+let valid_subdivisions: Vec<_> = subdivisions.into_iter().flatten().collect();
+```
+
+This keeps repositories focused on atomic operations and allows flexible composition at higher layers.
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue**: Transaction consumed error
+- **Cause**: Transaction used after being consumed
+- **Fix**: Ensure transaction is only used once per operation
+
+**Issue**: Deadlock or slow performance
+- **Cause**: Holding transaction lock while updating cache
+- **Fix**: Release transaction lock before cache operations
+
+**Issue**: Cache out of sync
+- **Cause**: Cache updated before database operation completes
+- **Fix**: Update cache only after successful database operation
+
+**Issue**: HeaplessString conversion fails
+- **Cause**: String exceeds capacity
+- **Fix**: Verify field size matches HeaplessString capacity
+
+---
+
+## References
+
+- **Trait Definitions**: `business-core/business-core-db/src/models/`
+- **Repository Traits**: `business-core/business-core-db/src/repository/`
+- **Cache Library**: `postgres-index-cache` crate
+- **Transaction Management**: `postgres-unit-of-work` crate
+- **Complete Example**: Country entity implementation
+
+---
+
+## Version History
+
+- **v1.0** - Initial skill based on Country entity pattern
+- Supports: CRUD, batch operations, indexing, caching, testing
+
+---
+
+## License
+
+Same as business-core project

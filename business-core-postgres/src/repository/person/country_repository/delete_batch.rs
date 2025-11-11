@@ -54,21 +54,10 @@ impl DeleteBatch<Postgres> for CountryRepositoryImpl {
 #[cfg(test)]
 mod tests {
     use crate::test_helper::setup_test_context;
-    use business_core_db::models::person::country::CountryModel;
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::delete_batch::DeleteBatch;
-    use heapless::String as HeaplessString;
     use uuid::Uuid;
-
-    fn create_test_country(iso2: &str, name: &str) -> CountryModel {
-        CountryModel {
-            id: Uuid::new_v4(),
-            iso2: HeaplessString::try_from(iso2).unwrap(),
-            name_l1: HeaplessString::try_from(name).unwrap(),
-            name_l2: None,
-            name_l3: None,
-        }
-    }
+    use super::super::test_utils::test_utils::create_test_country;
 
     #[tokio::test]
     async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

@@ -34,6 +34,10 @@ impl PostgresRepositories {
             business_core_db::IdxModelCache::new(vec![]).unwrap()
         ));
         
+        let country_subdivision_idx_cache = Arc::new(parking_lot::RwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+        
         // Register handler with listener if provided
         if let Some(listener) = listener {
             let handler = Arc::new(IndexCacheHandler::new(
@@ -41,14 +45,27 @@ impl PostgresRepositories {
                 country_idx_cache.clone(),
             ));
             listener.register_handler(handler);
+            
+            let subdivision_handler = Arc::new(IndexCacheHandler::new(
+                "country_subdivision_idx".to_string(),
+                country_subdivision_idx_cache.clone(),
+            ));
+            listener.register_handler(subdivision_handler);
         }
         
         let country_repository = Arc::new(crate::repository::person::CountryRepositoryImpl::new(
             executor.clone(),
             country_idx_cache,
         ));
+        
+        let country_subdivision_repository = Arc::new(crate::repository::person::CountrySubdivisionRepositoryImpl::new(
+            executor.clone(),
+            country_subdivision_idx_cache,
+        ));
+        
         let person_repos = PersonRepositories {
             country_repository,
+            country_subdivision_repository,
         };
 
         (audit_repos, person_repos)
@@ -61,4 +78,5 @@ pub struct AuditRepositories {
 
 pub struct PersonRepositories {
     pub country_repository: Arc<crate::repository::person::CountryRepositoryImpl>,
+    pub country_subdivision_repository: Arc<crate::repository::person::CountrySubdivisionRepositoryImpl>,
 }
