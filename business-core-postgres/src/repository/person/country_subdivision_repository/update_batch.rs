@@ -1,18 +1,18 @@
 use async_trait::async_trait;
-use business_core_db::models::person::country::CountryModel;
+use business_core_db::models::person::country_subdivision::CountrySubdivisionModel;
 use business_core_db::models::index_aware::IndexAware;
 use business_core_db::repository::update_batch::UpdateBatch;
 use sqlx::Postgres;
 use std::error::Error;
 use uuid::Uuid;
 
-use super::repo_impl::CountryRepositoryImpl;
+use super::repo_impl::CountrySubdivisionRepositoryImpl;
 
-impl CountryRepositoryImpl {
+impl CountrySubdivisionRepositoryImpl {
     pub(super) async fn update_batch_impl(
         &self,
-        items: Vec<CountryModel>,
-    ) -> Result<Vec<CountryModel>, Box<dyn Error + Send + Sync>> {
+        items: Vec<CountrySubdivisionModel>,
+    ) -> Result<Vec<CountrySubdivisionModel>, Box<dyn Error + Send + Sync>> {
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -29,13 +29,14 @@ impl CountryRepositoryImpl {
                 // Execute update
                 sqlx::query(
                     r#"
-                    UPDATE country
-                    SET iso2 = $2, name_l1 = $3, name_l2 = $4, name_l3 = $5
+                    UPDATE country_subdivision
+                    SET country_id = $2, code = $3, name_l1 = $4, name_l2 = $5, name_l3 = $6
                     WHERE id = $1
                     "#,
                 )
                 .bind(item.id)
-                .bind(item.iso2.as_str())
+                .bind(item.country_id)
+                .bind(item.code.as_str())
                 .bind(item.name_l1.as_str())
                 .bind(item.name_l2.as_ref().map(|s| s.as_str()))
                 .bind(item.name_l3.as_ref().map(|s| s.as_str()))
@@ -49,7 +50,7 @@ impl CountryRepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let cache = self.country_idx_cache.read().await;
+            let cache = self.country_subdivision_idx_cache.read().await;
             for (id, idx) in indices {
                 cache.remove(&id);
                 cache.add(idx);
@@ -61,12 +62,12 @@ impl CountryRepositoryImpl {
 }
 
 #[async_trait]
-impl UpdateBatch<Postgres, CountryModel> for CountryRepositoryImpl {
+impl UpdateBatch<Postgres, CountrySubdivisionModel> for CountrySubdivisionRepositoryImpl {
     async fn update_batch(
         &self,
-        items: Vec<CountryModel>,
+        items: Vec<CountrySubdivisionModel>,
         _audit_log_id: Uuid,
-    ) -> Result<Vec<CountryModel>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<CountrySubdivisionModel>, Box<dyn Error + Send + Sync>> {
         Self::update_batch_impl(self, items).await
     }
 }
@@ -75,45 +76,49 @@ impl UpdateBatch<Postgres, CountryModel> for CountryRepositoryImpl {
 mod tests {
     use crate::test_helper::setup_test_context;
     use business_core_db::repository::create_batch::CreateBatch;
-    use business_core_db::repository::load_batch::LoadBatch;
     use business_core_db::repository::update_batch::UpdateBatch;
     use heapless::String as HeaplessString;
     use uuid::Uuid;
-    use super::super::test_utils::test_utils::create_test_country;
+    use super::super::test_utils::test_utils::{create_test_country, create_test_country_subdivision};
 
     #[tokio::test]
     async fn test_update_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let country_repo = &ctx.person_repos().country_repository;
+        let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
 
-        let mut countries = Vec::new();
-        for i in 0..5 {
-            let country = create_test_country(
-                &format!("U{}", i),
-                &format!("Test Country {}", i),
+        // First create a country (required by foreign key constraint)
+        let country = create_test_country("JP", "Japan");
+        let country_id = country.id;
+        let audit_log_id = Uuid::new_v4();
+        country_repo.create_batch(vec![country], audit_log_id).await?;
+
+        let mut subdivisions = Vec::new();
+        for i in 0..3 {
+            let subdivision = create_test_country_subdivision(
+                country_id,
+                &format!("UPD{}", i),
+                &format!("Update Test {}", i),
             );
-            countries.push(country);
+            subdivisions.push(subdivision);
         }
 
         let audit_log_id = Uuid::new_v4();
-        let saved_countries = country_repo.create_batch(countries.clone(), audit_log_id).await?;
-        
-        let mut countries_to_update = Vec::new();
-        for mut country in saved_countries {
-            country.name_l1 = HeaplessString::try_from("Updated Name").unwrap();
-            countries_to_update.push(country);
+        let saved = country_subdivision_repo.create_batch(subdivisions, audit_log_id).await?;
+
+        // Update subdivisions
+        let mut updated_subdivisions = Vec::new();
+        for mut subdivision in saved {
+            subdivision.name_l1 = HeaplessString::try_from("Updated Name").unwrap();
+            updated_subdivisions.push(subdivision);
         }
 
-        let updated_countries = country_repo.update_batch(countries_to_update.clone(), audit_log_id).await?;
+        let audit_log_id = Uuid::new_v4();
+        let updated = country_subdivision_repo.update_batch(updated_subdivisions, audit_log_id).await?;
 
-        assert_eq!(updated_countries.len(), 5);
-
-        let ids: Vec<Uuid> = updated_countries.iter().map(|c| c.id).collect();
-        let loaded = country_repo.load_batch(&ids).await?;
-        
-        for country_opt in loaded {
-            let country = country_opt.unwrap();
-            assert_eq!(country.name_l1.as_str(), "Updated Name");
+        assert_eq!(updated.len(), 3);
+        for subdivision in updated {
+            assert_eq!(subdivision.name_l1.as_str(), "Updated Name");
         }
 
         Ok(())
@@ -122,12 +127,12 @@ mod tests {
     #[tokio::test]
     async fn test_update_batch_empty() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
-        let country_repo = &ctx.person_repos().country_repository;
+        let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
 
         let audit_log_id = Uuid::new_v4();
-        let updated_countries = country_repo.update_batch(Vec::new(), audit_log_id).await?;
+        let updated = country_subdivision_repo.update_batch(Vec::new(), audit_log_id).await?;
 
-        assert_eq!(updated_countries.len(), 0);
+        assert_eq!(updated.len(), 0);
 
         Ok(())
     }

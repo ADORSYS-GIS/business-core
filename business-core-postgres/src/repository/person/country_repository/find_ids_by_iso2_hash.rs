@@ -8,11 +8,9 @@ impl CountryRepositoryImpl {
         &self,
         iso2_hash: i64,
     ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
-        let cache = self.country_idx_cache.read();
-        let result = cache
-            .get_by_i64_index("iso2_hash", &iso2_hash)
-            .cloned()
-            .unwrap_or_default();
+        let cache = self.country_idx_cache.read().await;
+        let items = cache.get_by_i64_index("iso2_hash", &iso2_hash);
+        let result = items.into_iter().map(|item| item.id).collect();
         Ok(result)
     }
 }
@@ -20,21 +18,11 @@ impl CountryRepositoryImpl {
 #[cfg(test)]
 mod tests {
     use crate::test_helper::setup_test_context;
-    use business_core_db::models::person::country::CountryModel;
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::utils::hash_as_i64;
     use heapless::String as HeaplessString;
     use uuid::Uuid;
-
-    fn create_test_country(iso2: &str, name: &str) -> CountryModel {
-        CountryModel {
-            id: Uuid::new_v4(),
-            iso2: HeaplessString::try_from(iso2).unwrap(),
-            name_l1: HeaplessString::try_from(name).unwrap(),
-            name_l2: None,
-            name_l3: None,
-        }
-    }
+    use super::super::test_utils::test_utils::create_test_country;
 
     #[tokio::test]
     async fn test_find_ids_by_iso2_hash() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

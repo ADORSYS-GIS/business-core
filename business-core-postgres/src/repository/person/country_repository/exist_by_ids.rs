@@ -12,7 +12,7 @@ impl CountryRepositoryImpl {
         ids: &[Uuid],
     ) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
         let mut result = Vec::new();
-        let cache = repo.country_idx_cache.read();
+        let cache = repo.country_idx_cache.read().await;
         for &id in ids {
             result.push((id, cache.contains_primary(&id)));
         }
@@ -30,21 +30,10 @@ impl ExistByIds<Postgres> for CountryRepositoryImpl {
 #[cfg(test)]
 mod tests {
     use crate::test_helper::setup_test_context;
-    use business_core_db::models::person::country::CountryModel;
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::exist_by_ids::ExistByIds;
-    use heapless::String as HeaplessString;
     use uuid::Uuid;
-
-    fn create_test_country(iso2: &str, name: &str) -> CountryModel {
-        CountryModel {
-            id: Uuid::new_v4(),
-            iso2: HeaplessString::try_from(iso2).unwrap(),
-            name_l1: HeaplessString::try_from(name).unwrap(),
-            name_l2: None,
-            name_l3: None,
-        }
-    }
+    use super::super::test_utils::test_utils::create_test_country;
 
     #[tokio::test]
     async fn test_exist_by_ids() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

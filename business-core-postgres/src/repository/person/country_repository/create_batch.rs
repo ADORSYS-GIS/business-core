@@ -61,7 +61,7 @@ impl CountryRepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = repo.country_idx_cache.write();
+            let cache = repo.country_idx_cache.read().await;
             for idx in indices {
                 cache.add(idx);
             }
@@ -85,22 +85,11 @@ impl CreateBatch<Postgres, CountryModel> for CountryRepositoryImpl {
 #[cfg(test)]
 mod tests {
     use crate::test_helper::{setup_test_context, setup_test_context_and_listen};
-    use business_core_db::models::person::country::CountryModel;
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
-    use heapless::String as HeaplessString;
     use tokio::time::{sleep, Duration};
     use uuid::Uuid;
-
-    fn create_test_country(iso2: &str, name: &str) -> CountryModel {
-        CountryModel {
-            id: Uuid::new_v4(),
-            iso2: HeaplessString::try_from(iso2).unwrap(),
-            name_l1: HeaplessString::try_from(name).unwrap(),
-            name_l2: None,
-            name_l3: None,
-        }
-    }
+    use super::super::test_utils::test_utils::create_test_country;
 
     #[tokio::test]
     async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -188,7 +177,7 @@ mod tests {
         let country_repo = &ctx.person_repos().country_repository;
 
         // Verify the cache was updated via the trigger
-        let cache = country_repo.country_idx_cache.read();
+        let cache = country_repo.country_idx_cache.read().await;
         assert!(
             cache.contains_primary(&country_idx.id),
             "Country should be in cache after insert"
@@ -216,7 +205,7 @@ mod tests {
         sleep(Duration::from_millis(500)).await;
 
         // Verify the cache entry was removed
-        let cache = country_repo.country_idx_cache.read();
+        let cache = country_repo.country_idx_cache.read().await;
         assert!(
             !cache.contains_primary(&country_idx.id),
             "Country should be removed from cache after delete"
