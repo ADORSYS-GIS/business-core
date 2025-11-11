@@ -1,23 +1,29 @@
 use business_core_db::models::person::country_subdivision::{CountrySubdivisionIdxModel, CountrySubdivisionModel};
 use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
-use postgres_unit_of_work::Executor;
+use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
+use postgres_index_cache::TransactionAwareIdxModelCache;
+use parking_lot::RwLock as ParkingRwLock;
+use tokio::sync::RwLock;
 use std::sync::Arc;
 use sqlx::{postgres::PgRow, Row};
 use std::error::Error;
+use async_trait::async_trait;
 
 pub struct CountrySubdivisionRepositoryImpl {
     pub executor: Executor,
-    pub country_subdivision_idx_cache: Arc<parking_lot::RwLock<business_core_db::IdxModelCache<CountrySubdivisionIdxModel>>>,
+    pub country_subdivision_idx_cache: Arc<RwLock<TransactionAwareIdxModelCache<CountrySubdivisionIdxModel>>>,
 }
 
 impl CountrySubdivisionRepositoryImpl {
     pub fn new(
         executor: Executor,
-        country_subdivision_idx_cache: Arc<parking_lot::RwLock<business_core_db::IdxModelCache<CountrySubdivisionIdxModel>>>,
+        country_subdivision_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<CountrySubdivisionIdxModel>>>,
     ) -> Self {
         Self {
             executor,
-            country_subdivision_idx_cache,
+            country_subdivision_idx_cache: Arc::new(RwLock::new(TransactionAwareIdxModelCache::new(
+                country_subdivision_idx_cache,
+            ))),
         }
     }
 
@@ -39,6 +45,17 @@ impl CountrySubdivisionRepositoryImpl {
             idx_models.push(CountrySubdivisionIdxModel::try_from_row(&row).map_err(sqlx::Error::Decode)?);
         }
         Ok(idx_models)
+    }
+}
+
+#[async_trait]
+impl TransactionAware for CountrySubdivisionRepositoryImpl {
+    async fn on_commit(&self) -> TransactionResult<()> {
+        self.country_subdivision_idx_cache.read().await.on_commit().await
+    }
+
+    async fn on_rollback(&self) -> TransactionResult<()> {
+        self.country_subdivision_idx_cache.read().await.on_rollback().await
     }
 }
 

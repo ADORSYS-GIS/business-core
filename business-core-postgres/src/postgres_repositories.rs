@@ -1,4 +1,3 @@
-use sqlx::PgPool;
 use std::sync::Arc;
 use postgres_unit_of_work::Executor;
 use postgres_index_cache::{CacheNotificationListener, IndexCacheHandler};
@@ -6,22 +5,17 @@ use postgres_index_cache::{CacheNotificationListener, IndexCacheHandler};
 use crate::repository::audit::audit_log_repository::AuditLogRepositoryImpl;
 
 pub struct PostgresRepositories {
-    pool: Arc<PgPool>,
+    executor: Executor,
 }
 
 impl PostgresRepositories {
-    pub fn new(pool: Arc<PgPool>) -> Self {
-        Self { pool }
+    pub fn new(executor: Executor) -> Self {
+        Self { executor }
     }
 
     /// Create all repositories sharing a single transaction
-    pub async fn create_all_repositories(&self, listener: Option<&mut CacheNotificationListener>) -> (AuditRepositories, PersonRepositories) {
-        let tx = self
-            .pool
-            .begin()
-            .await
-            .expect("Failed to begin transaction");
-        let executor = Executor::new(tx);
+    pub fn create_all_repositories(&self, listener: Option<&mut CacheNotificationListener>) -> (AuditRepositories, PersonRepositories) {
+        let executor = self.executor.clone();
 
         // Create audit repositories with shared executor
         let audit_log_repository = Arc::new(AuditLogRepositoryImpl::new(executor.clone()));

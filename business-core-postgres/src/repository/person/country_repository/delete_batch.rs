@@ -30,7 +30,7 @@ impl CountryRepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = repo.country_idx_cache.write();
+            let cache = repo.country_idx_cache.read().await;
             for id in ids {
                 cache.remove(id);
             }

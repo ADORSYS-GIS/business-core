@@ -12,7 +12,7 @@ impl CountryRepositoryImpl {
         ids: &[Uuid],
     ) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
         let mut result = Vec::new();
-        let cache = repo.country_idx_cache.read();
+        let cache = repo.country_idx_cache.read().await;
         for &id in ids {
             result.push((id, cache.contains_primary(&id)));
         }

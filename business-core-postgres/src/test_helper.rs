@@ -9,6 +9,7 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::sync::Arc;
 use std::time::Duration;
 use postgres_index_cache::CacheNotificationListener;
+use postgres_unit_of_work::{PostgresUnitOfWork, UnitOfWork, UnitOfWorkSession};
 use tokio::sync::OnceCell;
 
 // Flag to track if DB initialization has been done
@@ -130,11 +131,16 @@ impl Drop for TestContext {
 pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Error + Send + Sync>> {
     let pool = get_or_init_test_pool().await?;
     
-    let repos = PostgresRepositories::new(pool.clone());
+    // Create a unit of work and begin a transaction session
+    let uow = PostgresUnitOfWork::new(pool.clone());
+    let session = uow.begin().await?;
+    
+    // Create repositories using the executor from the session
+    let repos = PostgresRepositories::new(session.executor().clone());
     
     // Use the new method that creates both repositories with a SHARED transaction
     // This prevents connection exhaustion by using only 1 transaction instead of 2
-    let (audit_repos, person_repos) = repos.create_all_repositories(None).await;
+    let (audit_repos, person_repos) = repos.create_all_repositories(None);
 
     Ok(TestContext {
         audit_repos,
@@ -155,12 +161,17 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     // Use 4 connections: 1 for transaction, 1 for listener, 2 for raw queries
     let pool = get_or_init_test_pool_with_size(10).await?;
     
-    let repos = PostgresRepositories::new(pool.clone());
+    // Create a unit of work and begin a transaction session
+    let uow = PostgresUnitOfWork::new(pool.clone());
+    let session = uow.begin().await?;
+    
+    // Create repositories using the executor from the session
+    let repos = PostgresRepositories::new(session.executor().clone());
     
     // Create listener for cache notifications
     let mut listener = CacheNotificationListener::new();
     
-    let (audit_repos, person_repos) = repos.create_all_repositories(Some(&mut listener)).await;
+    let (audit_repos, person_repos) = repos.create_all_repositories(Some(&mut listener));
     
     // Start listening to notifications in background
     let pool_clone = pool.clone();

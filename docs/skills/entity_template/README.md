@@ -10,7 +10,7 @@ Generate production-ready database access layers with:
 - ✅ **CRUD operations** (Create, Read, Update, Delete)
 - ✅ **Batch operations** for performance
 - ✅ **Application-layer indexing** with hash-based lookups
-- ✅ **Cache integration** with transaction-aware updates
+- ✅ **Transaction-aware cache integration** with automatic rollback support
 - ✅ **Comprehensive testing** (unit + integration)
 - ✅ **Audit logging** support
 
@@ -190,24 +190,30 @@ pub type {Entity}IdxModelCache = IdxModelCache<{Entity}IdxModel>;
 ```rust
 use business_core_db::models::{module}::{entity}::{Entity}IdxModel, {Entity}Model};
 use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
-use postgres_unit_of_work::Executor;
+use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
+use postgres_index_cache::TransactionAwareIdxModelCache;
+use parking_lot::RwLock as ParkingRwLock;
+use tokio::sync::RwLock;
 use std::sync::Arc;
 use sqlx::{postgres::PgRow, Row};
 use std::error::Error;
+use async_trait::async_trait;
 
 pub struct {Entity}RepositoryImpl {
     pub executor: Executor,
-    pub {entity}_idx_cache: Arc<parking_lot::RwLock<business_core_db::IdxModelCache<{Entity}IdxModel>>>,
+    pub {entity}_idx_cache: Arc<RwLock<TransactionAwareIdxModelCache<{Entity}IdxModel>>>,
 }
 
 impl {Entity}RepositoryImpl {
     pub fn new(
         executor: Executor,
-        {entity}_idx_cache: Arc<parking_lot::RwLock<business_core_db::IdxModelCache<{Entity}IdxModel>>>,
+        {entity}_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<{Entity}IdxModel>>>,
     ) -> Self {
         Self {
             executor,
-            {entity}_idx_cache,
+            {entity}_idx_cache: Arc::new(RwLock::new(TransactionAwareIdxModelCache::new(
+                {entity}_idx_cache,
+            ))),
         }
     }
 
@@ -247,6 +253,17 @@ impl TryFromRow<PgRow> for {Entity}IdxModel {
             id: row.get("{entity}_id"),
             // ... index field mappings
         })
+    }
+}
+
+#[async_trait]
+impl TransactionAware for {Entity}RepositoryImpl {
+    async fn on_commit(&self) -> TransactionResult<()> {
+        self.{entity}_idx_cache.read().await.on_commit().await
+    }
+
+    async fn on_rollback(&self) -> TransactionResult<()> {
+        self.{entity}_idx_cache.read().await.on_rollback().await
     }
 }
 ```
@@ -312,7 +329,7 @@ impl {Entity}RepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = repo.{entity}_idx_cache.write();
+            let cache = repo.{entity}_idx_cache.read().await;
             for idx in indices {
                 cache.add(idx);
             }
@@ -448,7 +465,7 @@ impl {Entity}RepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = self.{entity}_idx_cache.write();
+            let cache = self.{entity}_idx_cache.read().await;
             for (id, idx) in indices {
                 cache.remove(&id);
                 cache.add(idx);
@@ -511,7 +528,7 @@ impl {Entity}RepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = repo.{entity}_idx_cache.write();
+            let cache = repo.{entity}_idx_cache.read().await;
             for id in ids {
                 cache.remove(id);
             }
@@ -555,7 +572,7 @@ impl {Entity}RepositoryImpl {
         ids: &[Uuid],
     ) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
         let mut result = Vec::new();
-        let cache = repo.{entity}_idx_cache.read();
+        let cache = repo.{entity}_idx_cache.read().await;
         for &id in ids {
             result.push((id, cache.contains_primary(&id)));
         }
@@ -591,11 +608,9 @@ impl {Entity}RepositoryImpl {
         &self,
         {index_name}: i64,
     ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
-        let cache = self.{entity}_idx_cache.read();
-        let result = cache
-            .get_by_i64_index("{index_name}", &{index_name})
-            .cloned()
-            .unwrap_or_default();
+        let cache = self.{entity}_idx_cache.read().await;
+        let items = cache.get_by_i64_index("{index_name}", &{index_name});
+        let result = items.into_iter().map(|item| item.id).collect();
         Ok(result)
     }
 }
@@ -610,7 +625,21 @@ mod tests {
 
 ## Critical Patterns
 
-### 1. Transaction Lock Management
+### 1. Transaction-Aware Cache Architecture
+
+The cache implementation uses a two-tier architecture:
+
+1. **Shared Cache**: `Arc<parking_lot::RwLock<IdxModelCache<T>>>` - Global, persistent cache
+2. **Transaction Layer**: `Arc<tokio::sync::RwLock<TransactionAwareIdxModelCache<T>>>` - Transaction-local staging
+
+**Key Concepts:**
+
+- **Staging**: Cache modifications are staged locally during a transaction
+- **Commit**: On successful commit, staged changes are applied to the shared cache via `on_commit()`
+- **Rollback**: On rollback, staged changes are discarded via `on_rollback()`
+- **Read-through**: Reads consider both staged changes and the shared cache
+
+### 2. Transaction Lock Management
 
 **ALWAYS follow this pattern:**
 
@@ -624,25 +653,36 @@ mod tests {
     // ...
 } // 3. Release lock immediately
 
-// 4. Update cache AFTER lock is released
+// 4. Update cache AFTER lock is released (stages changes locally)
 {
-    let mut cache = self.{entity}_idx_cache.write();
-    // ... cache operations
+    let cache = self.{entity}_idx_cache.read().await;
+    // ... cache operations (add, remove, update)
 }
 ```
 
-**Why?** Prevents deadlocks and improves concurrency.
+**Why?** Prevents deadlocks and improves concurrency. The transaction-aware cache automatically handles commit/rollback.
 
-### 2. Cache Synchronization
+### 3. Cache Synchronization
 
-**Pattern for each operation:**
+**Pattern for each operation (uses read lock - changes are staged):**
 
-- **Create**: `cache.add(idx)`
-- **Update**: `cache.remove(&id); cache.add(idx)`
-- **Delete**: `cache.remove(&id)`
-- **Read**: Use `cache.contains_primary()` or `cache.get_by_*_index()`
+- **Create**: `cache.add(idx)` - Stages item for addition
+- **Update**: `cache.remove(&id); cache.add(idx)` - Stages removal and re-addition
+- **Delete**: `cache.remove(&id)` - Stages item for removal
+- **Read**: Use `cache.contains_primary()` or `cache.get_by_*_index()` - Considers staged changes
 
-### 3. Error Handling
+**Transaction Lifecycle:**
+
+1. During transaction: All cache operations stage changes locally
+2. On commit: `on_commit()` applies all staged changes to shared cache
+3. On rollback: `on_rollback()` discards all staged changes
+
+**Important**: Always use `.await` when accessing the transaction-aware cache:
+```rust
+let cache = self.{entity}_idx_cache.read().await;  // Note the .await
+```
+
+### 4. Error Handling
 
 ```rust
 // Use Box<dyn Error + Send + Sync> for all repository methods
@@ -652,7 +692,26 @@ Result<T, Box<dyn Error + Send + Sync>>
 let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
 ```
 
-### 4. Field Mapping Helpers
+### 5. TransactionAware Implementation
+
+All repository implementations must implement the `TransactionAware` trait:
+
+```rust
+#[async_trait]
+impl TransactionAware for {Entity}RepositoryImpl {
+    async fn on_commit(&self) -> TransactionResult<()> {
+        self.{entity}_idx_cache.read().await.on_commit().await
+    }
+
+    async fn on_rollback(&self) -> TransactionResult<()> {
+        self.{entity}_idx_cache.read().await.on_rollback().await
+    }
+}
+```
+
+This delegates to the transaction-aware cache, which handles applying or discarding staged changes.
+
+### 6. Field Mapping Helpers
 
 For HeaplessString fields:
 
@@ -666,7 +725,7 @@ field_name: get_heapless_string(row, "field_name")?,
 optional_field: get_optional_heapless_string(row, "optional_field")?,
 ```
 
-### 5. Index Hash Computation
+### 7. Index Hash Computation
 
 ```rust
 use crate::utils::hash_as_i64;
@@ -989,9 +1048,10 @@ The skill should generate:
 
 After generating code, verify:
 
-- [ ] All trait implementations are present
+- [ ] All trait implementations are present (including TransactionAware)
 - [ ] Transaction lock pattern is correct
-- [ ] Cache is updated after database operations
+- [ ] Cache is updated after database operations using read lock
+- [ ] All cache accesses use `.await` for async operations
 - [ ] Empty batch handling is included
 - [ ] All fields are mapped correctly with proper helpers
 - [ ] Index computation in `to_index()` is correct

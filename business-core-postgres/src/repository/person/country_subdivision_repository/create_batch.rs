@@ -63,7 +63,7 @@ impl CountrySubdivisionRepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = repo.country_subdivision_idx_cache.write();
+            let cache = repo.country_subdivision_idx_cache.read().await;
             for idx in indices {
                 cache.add(idx);
             }

@@ -61,7 +61,7 @@ impl CountryRepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let mut cache = repo.country_idx_cache.write();
+            let cache = repo.country_idx_cache.read().await;
             for idx in indices {
                 cache.add(idx);
             }
@@ -177,7 +177,7 @@ mod tests {
         let country_repo = &ctx.person_repos().country_repository;
 
         // Verify the cache was updated via the trigger
-        let cache = country_repo.country_idx_cache.read();
+        let cache = country_repo.country_idx_cache.read().await;
         assert!(
             cache.contains_primary(&country_idx.id),
             "Country should be in cache after insert"
@@ -205,7 +205,7 @@ mod tests {
         sleep(Duration::from_millis(500)).await;
 
         // Verify the cache entry was removed
-        let cache = country_repo.country_idx_cache.read();
+        let cache = country_repo.country_idx_cache.read().await;
         assert!(
             !cache.contains_primary(&country_idx.id),
             "Country should be removed from cache after delete"

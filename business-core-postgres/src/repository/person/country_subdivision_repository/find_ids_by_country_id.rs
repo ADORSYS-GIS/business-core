@@ -8,11 +8,9 @@ impl CountrySubdivisionRepositoryImpl {
         &self,
         country_id: Uuid,
     ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
-        let cache = self.country_subdivision_idx_cache.read();
-        let result = cache
-            .get_by_uuid_index("country_id", &country_id)
-            .cloned()
-            .unwrap_or_default();
+        let cache = self.country_subdivision_idx_cache.read().await;
+        let items = cache.get_by_uuid_index("country_id", &country_id);
+        let result = items.into_iter().map(|item| item.id).collect();
         Ok(result)
     }
 }
