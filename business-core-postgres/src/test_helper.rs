@@ -4,13 +4,14 @@
 //! that are automatically rolled back, ensuring perfect test isolation without
 //! the need for explicit cleanup operations.
 
-use crate::postgres_repositories::{AuditRepositories, PersonRepositories, PostgresRepositories};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::sync::Arc;
 use std::time::Duration;
 use postgres_index_cache::CacheNotificationListener;
-use postgres_unit_of_work::{PostgresUnitOfWork, UnitOfWork, UnitOfWorkSession};
+use postgres_unit_of_work::{PostgresUnitOfWork, UnitOfWork};
 use tokio::sync::OnceCell;
+
+use crate::repository::{audit::AuditRepositories, person::PersonRepositories};
 
 // Flag to track if DB initialization has been done
 static DB_INITIALIZED: OnceCell<()> = OnceCell::const_new();
@@ -135,12 +136,13 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     let uow = PostgresUnitOfWork::new(pool.clone());
     let session = uow.begin().await?;
     
-    // Create repositories using the executor from the session
-    let repos = PostgresRepositories::new(session.executor().clone());
+    // Create factories with listener for cache synchronization
+    let audit_factory = crate::repository::audit::AuditRepoFactory::new();
+    let person_factory = crate::repository::person::PersonRepoFactory::new(None);
     
-    // Use the new method that creates both repositories with a SHARED transaction
-    // This prevents connection exhaustion by using only 1 transaction instead of 2
-    let (audit_repos, person_repos) = repos.create_all_repositories(None);
+    // Build repositories using the session executor
+    let audit_repos = audit_factory.build_all_repos(&session);
+    let person_repos = person_factory.build_all_repos(&session);
 
     Ok(TestContext {
         audit_repos,
@@ -164,14 +166,17 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     // Create a unit of work and begin a transaction session
     let uow = PostgresUnitOfWork::new(pool.clone());
     let session = uow.begin().await?;
-    
-    // Create repositories using the executor from the session
-    let repos = PostgresRepositories::new(session.executor().clone());
-    
+        
     // Create listener for cache notifications
     let mut listener = CacheNotificationListener::new();
     
-    let (audit_repos, person_repos) = repos.create_all_repositories(Some(&mut listener));
+    // Create factories with listener for cache synchronization
+    let audit_factory = crate::repository::audit::AuditRepoFactory::new();
+    let person_factory = crate::repository::person::PersonRepoFactory::new(Some(&mut listener));
+    
+    // Build repositories using the session executor
+    let audit_repos = audit_factory.build_all_repos(&session);
+    let person_repos = person_factory.build_all_repos(&session);
     
     // Start listening to notifications in background
     let pool_clone = pool.clone();
