@@ -1,18 +1,18 @@
 use async_trait::async_trait;
-use business_core_db::models::person::country_subdivision::CountrySubdivisionModel;
+use business_core_db::models::person::locality::LocalityModel;
 use business_core_db::repository::create_batch::CreateBatch;
 use sqlx::Postgres;
 use std::error::Error;
 use uuid::Uuid;
 use business_core_db::models::index_aware::IndexAware;
 
-use super::repo_impl::CountrySubdivisionRepositoryImpl;
+use super::repo_impl::LocalityRepositoryImpl;
 
-impl CountrySubdivisionRepositoryImpl {
+impl LocalityRepositoryImpl {
     pub(super) async fn create_batch_impl(
-        repo: &CountrySubdivisionRepositoryImpl,
-        items: Vec<CountrySubdivisionModel>,
-    ) -> Result<Vec<CountrySubdivisionModel>, Box<dyn Error + Send + Sync>> {
+        repo: &LocalityRepositoryImpl,
+        items: Vec<LocalityModel>,
+    ) -> Result<Vec<LocalityModel>, Box<dyn Error + Send + Sync>> {
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -29,12 +29,12 @@ impl CountrySubdivisionRepositoryImpl {
                 // Execute main insert
                 sqlx::query(
                     r#"
-                    INSERT INTO country_subdivision (id, country_id, code, name_l1, name_l2, name_l3)
+                    INSERT INTO locality (id, country_subdivision_id, code, name_l1, name_l2, name_l3)
                     VALUES ($1, $2, $3, $4, $5, $6)
                     "#,
                 )
                 .bind(item.id)
-                .bind(item.country_id)
+                .bind(item.country_subdivision_id)
                 .bind(item.code.as_str())
                 .bind(item.name_l1.as_str())
                 .bind(item.name_l2.as_ref().map(|s| s.as_str()))
@@ -46,12 +46,12 @@ impl CountrySubdivisionRepositoryImpl {
                 let idx = item.to_index();
                 sqlx::query(
                     r#"
-                    INSERT INTO country_subdivision_idx (id, country_id, code_hash)
+                    INSERT INTO locality_idx (id, country_subdivision_id, code_hash)
                     VALUES ($1, $2, $3)
                     "#,
                 )
                 .bind(idx.id)
-                .bind(idx.country_id)
+                .bind(idx.country_subdivision_id)
                 .bind(idx.code_hash)
                 .execute(&mut **transaction)
                 .await?;
@@ -63,7 +63,7 @@ impl CountrySubdivisionRepositoryImpl {
         
         // Update cache after releasing transaction lock
         {
-            let cache = repo.country_subdivision_idx_cache.read().await;
+            let cache = repo.locality_idx_cache.read().await;
             for idx in indices {
                 cache.add(idx);
             }
@@ -74,12 +74,12 @@ impl CountrySubdivisionRepositoryImpl {
 }
 
 #[async_trait]
-impl CreateBatch<Postgres, CountrySubdivisionModel> for CountrySubdivisionRepositoryImpl {
+impl CreateBatch<Postgres, LocalityModel> for LocalityRepositoryImpl {
     async fn create_batch(
         &self,
-        items: Vec<CountrySubdivisionModel>,
+        items: Vec<LocalityModel>,
         _audit_log_id: Uuid,
-    ) -> Result<Vec<CountrySubdivisionModel>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<LocalityModel>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
 }
@@ -91,13 +91,14 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
     use uuid::Uuid;
-    use super::super::test_utils::test_utils::{create_test_country, create_test_country_subdivision};
+    use super::super::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
     async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let country_repo = &ctx.person_repos().country_repository;
         let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+        let locality_repo = &ctx.person_repos().locality_repository;
 
         // First create a country (required by foreign key constraint)
         let country = create_test_country("US", "United States");
@@ -105,24 +106,30 @@ mod tests {
         let audit_log_id = Uuid::new_v4();
         country_repo.create_batch(vec![country], audit_log_id).await?;
 
-        let mut subdivisions = Vec::new();
+        // Create a country subdivision (required by foreign key constraint)
+        let subdivision = create_test_country_subdivision(country_id, "CA", "California");
+        let subdivision_id = subdivision.id;
+        let audit_log_id = Uuid::new_v4();
+        country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+
+        let mut localities = Vec::new();
         for i in 0..5 {
-            let subdivision = create_test_country_subdivision(
-                country_id,
-                &format!("SD{}", i),
-                &format!("Test Subdivision {}", i),
+            let locality = create_test_locality(
+                subdivision_id,
+                &format!("LOC{}", i),
+                &format!("Test Locality {}", i),
             );
-            subdivisions.push(subdivision);
+            localities.push(locality);
         }
 
         let audit_log_id = Uuid::new_v4();
-        let saved_subdivisions = country_subdivision_repo.create_batch(subdivisions.clone(), audit_log_id).await?;
+        let saved_localities = locality_repo.create_batch(localities.clone(), audit_log_id).await?;
 
-        assert_eq!(saved_subdivisions.len(), 5);
+        assert_eq!(saved_localities.len(), 5);
 
-        for saved_subdivision in &saved_subdivisions {
-            assert_eq!(saved_subdivision.country_id, country_id);
-            assert!(saved_subdivision.code.as_str().starts_with("SD"));
+        for saved_locality in &saved_localities {
+            assert_eq!(saved_locality.country_subdivision_id, subdivision_id);
+            assert!(saved_locality.code.as_str().starts_with("LOC"));
         }
 
         Ok(())
@@ -131,18 +138,18 @@ mod tests {
     #[tokio::test]
     async fn test_create_batch_empty() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
-        let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+        let locality_repo = &ctx.person_repos().locality_repository;
 
         let audit_log_id = Uuid::new_v4();
-        let saved_subdivisions = country_subdivision_repo.create_batch(Vec::new(), audit_log_id).await?;
+        let saved_localities = locality_repo.create_batch(Vec::new(), audit_log_id).await?;
 
-        assert_eq!(saved_subdivisions.len(), 0);
+        assert_eq!(saved_localities.len(), 0);
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_country_subdivision_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn test_locality_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         
         // Setup test context with the handler
         let ctx = setup_test_context_and_listen().await?;
@@ -152,14 +159,18 @@ mod tests {
         let test_country = create_test_country("ZZ", "Test Country");
         let country_id = test_country.id;
 
-        // Create a test country subdivision with a unique code to avoid conflicts
+        // Create a test country subdivision (required by foreign key)
+        let test_subdivision = create_test_country_subdivision(country_id, "ZZ", "Test Subdivision");
+        let subdivision_id = test_subdivision.id;
+
+        // Create a test locality with a unique code to avoid conflicts
         let unique_code = {
             let uuid = uuid::Uuid::new_v4();
             let uuid_bytes = uuid.as_bytes();
-            format!("SD-{:02X}{:02X}", uuid_bytes[0], uuid_bytes[1])
+            format!("LOC-{:02X}{:02X}{:02X}{:02X}", uuid_bytes[0], uuid_bytes[1], uuid_bytes[2], uuid_bytes[3])
         };
-        let test_subdivision = create_test_country_subdivision(country_id, &unique_code, "Test Subdivision");
-        let subdivision_idx = test_subdivision.to_index();
+        let test_locality = create_test_locality(subdivision_id, &unique_code, "Test Locality");
+        let locality_idx = test_locality.to_index();
     
         // Give listener more time to start and establish connection
         // The listener needs time to connect and execute LISTEN command
@@ -187,43 +198,61 @@ mod tests {
             .execute(&**pool)
             .await
             .expect("Failed to insert country subdivision");
-    
-        // Then insert the country subdivision index directly into the database using raw SQL
-        sqlx::query("INSERT INTO country_subdivision_idx (id, country_id, code_hash) VALUES ($1, $2, $3)")
-            .bind(subdivision_idx.id)
-            .bind(subdivision_idx.country_id)
-            .bind(subdivision_idx.code_hash)
+
+        // Then insert the locality record
+        sqlx::query("INSERT INTO locality (id, country_subdivision_id, code, name_l1, name_l2, name_l3) VALUES ($1, $2, $3, $4, $5, $6)")
+            .bind(test_locality.id)
+            .bind(test_locality.country_subdivision_id)
+            .bind(test_locality.code.as_str())
+            .bind(test_locality.name_l1.as_str())
+            .bind(test_locality.name_l2.as_ref().map(|s| s.as_str()))
+            .bind(test_locality.name_l3.as_ref().map(|s| s.as_str()))
             .execute(&**pool)
             .await
-            .expect("Failed to insert country subdivision index");
+            .expect("Failed to insert locality");
+    
+        // Then insert the locality index directly into the database using raw SQL
+        sqlx::query("INSERT INTO locality_idx (id, country_subdivision_id, code_hash) VALUES ($1, $2, $3)")
+            .bind(locality_idx.id)
+            .bind(locality_idx.country_subdivision_id)
+            .bind(locality_idx.code_hash)
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert locality index");
 
         // Give more time for notification to be processed
         sleep(Duration::from_millis(500)).await;
 
-        let subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+        let locality_repo = &ctx.person_repos().locality_repository;
 
         // Verify the cache was updated via the trigger
-        let cache = subdivision_repo.country_subdivision_idx_cache.read().await;
+        let cache = locality_repo.locality_idx_cache.read().await;
         assert!(
-            cache.contains_primary(&subdivision_idx.id),
-            "Country subdivision should be in cache after insert"
+            cache.contains_primary(&locality_idx.id),
+            "Locality should be in cache after insert"
         );
     
-        let cached_subdivision = cache.get_by_primary(&subdivision_idx.id);
-        assert!(cached_subdivision.is_some(), "Country subdivision should be retrievable from cache");
+        let cached_locality = cache.get_by_primary(&locality_idx.id);
+        assert!(cached_locality.is_some(), "Locality should be retrievable from cache");
         
         // Verify the cached data matches
-        let cached_subdivision = cached_subdivision.unwrap();
-        assert_eq!(cached_subdivision.id, subdivision_idx.id);
-        assert_eq!(cached_subdivision.country_id, subdivision_idx.country_id);
-        assert_eq!(cached_subdivision.code_hash, subdivision_idx.code_hash);
+        let cached_locality = cached_locality.unwrap();
+        assert_eq!(cached_locality.id, locality_idx.id);
+        assert_eq!(cached_locality.country_subdivision_id, locality_idx.country_subdivision_id);
+        assert_eq!(cached_locality.code_hash, locality_idx.code_hash);
         
         // Drop the read lock before proceeding to allow notification handler to process
         drop(cache);
 
-        // Delete the records from the database, will cascade delete country_subdivision_idx
+        // Delete the records from the database, will cascade delete locality_idx
+        sqlx::query("DELETE FROM locality WHERE id = $1")
+            .bind(locality_idx.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to delete locality");
+
         sqlx::query("DELETE FROM country_subdivision WHERE id = $1")
-            .bind(subdivision_idx.id)
+            .bind(subdivision_id)
             .execute(&**pool)
             .await
             .expect("Failed to delete country subdivision");
@@ -238,10 +267,10 @@ mod tests {
         sleep(Duration::from_millis(500)).await;
 
         // Verify the cache entry was removed
-        let cache = subdivision_repo.country_subdivision_idx_cache.read().await;
+        let cache = locality_repo.locality_idx_cache.read().await;
         assert!(
-            !cache.contains_primary(&subdivision_idx.id),
-            "Country subdivision should be removed from cache after delete"
+            !cache.contains_primary(&locality_idx.id),
+            "Locality should be removed from cache after delete"
         );
         
         Ok(())
