@@ -47,7 +47,7 @@ mod tests {
         let audit_log_id = Uuid::new_v4();
         let saved = country_subdivision_repo.create_batch(vec![subdivision.clone()], audit_log_id).await?;
 
-        let unique_code_hash = hash_as_i64(&unique_code);
+        let unique_code_hash = hash_as_i64(&unique_code)?;
         let found_ids = country_subdivision_repo.find_ids_by_code_hash(unique_code_hash).await?;
         
         assert_eq!(found_ids.len(), 1);
@@ -62,7 +62,7 @@ mod tests {
         let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
 
         let non_existent_code = "NONEXIST";
-        let non_existent_code_hash = hash_as_i64(&non_existent_code);
+        let non_existent_code_hash = hash_as_i64(&non_existent_code)?;
         let found_ids = country_subdivision_repo.find_ids_by_code_hash(non_existent_code_hash).await?;
         
         assert!(found_ids.is_empty());
