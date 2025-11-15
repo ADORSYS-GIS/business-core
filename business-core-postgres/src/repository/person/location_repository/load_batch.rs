@@ -70,17 +70,17 @@ mod tests {
         let country_id = country.id;
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
-        country_repo.create_batch(vec![country], audit_log.id).await?;
+        country_repo.create_batch(vec![country], Some(audit_log.id)).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "RM", "Rome");
         let subdivision_id = subdivision.id;
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], Some(audit_log.id)).await?;
 
         // Create a locality (required by foreign key constraint)
         let locality = create_test_locality(subdivision_id, "RM", "Rome");
         let locality_id = locality.id;
-        locality_repo.create_batch(vec![locality], audit_log.id).await?;
+        locality_repo.create_batch(vec![locality], Some(audit_log.id)).await?;
 
         let mut locations = Vec::new();
         for i in 0..3 {
@@ -91,7 +91,7 @@ mod tests {
             locations.push(location);
         }
 
-        let saved = location_repo.create_batch(locations.clone(), audit_log.id).await?;
+        let saved = location_repo.create_batch(locations.clone(), Some(audit_log.id)).await?;
 
         let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
         let loaded = location_repo.load_batch(&ids).await?;
@@ -120,24 +120,24 @@ mod tests {
         let country_id = country.id;
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
-        country_repo.create_batch(vec![country], audit_log.id).await?;
+        country_repo.create_batch(vec![country], Some(audit_log.id)).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "MD", "Madrid");
         let subdivision_id = subdivision.id;
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], Some(audit_log.id)).await?;
 
         // Create a locality (required by foreign key constraint)
         let locality = create_test_locality(subdivision_id, "MD", "Madrid");
         let locality_id = locality.id;
-        locality_repo.create_batch(vec![locality], audit_log.id).await?;
+        locality_repo.create_batch(vec![locality], Some(audit_log.id)).await?;
 
         let location = create_test_location(
             locality_id,
             "1 Gran Vía",
         );
 
-        let saved = location_repo.create_batch(vec![location], audit_log.id).await?;
+        let saved = location_repo.create_batch(vec![location], Some(audit_log.id)).await?;
 
         let mut ids = vec![saved[0].id];
         ids.push(Uuid::new_v4()); // Add non-existing ID

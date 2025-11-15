@@ -12,8 +12,9 @@ impl LocationRepositoryImpl {
     pub(super) async fn delete_batch_impl(
         repo: &LocationRepositoryImpl,
         ids: &[Uuid],
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn Error + Send + Sync>> {
+        let audit_log_id = audit_log_id.ok_or("audit_log_id is required for LocationModel")?;
         if ids.is_empty() {
             return Ok(0);
         }
@@ -87,7 +88,7 @@ impl DeleteBatch<Postgres> for LocationRepositoryImpl {
     async fn delete_batch(
         &self,
         ids: &[Uuid],
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn Error + Send + Sync>> {
         Self::delete_batch_impl(self, ids, audit_log_id).await
     }
@@ -115,17 +116,17 @@ mod tests {
         let country_id = country.id;
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
-        country_repo.create_batch(vec![country], audit_log.id).await?;
+        country_repo.create_batch(vec![country], Some(audit_log.id)).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "CA", "California");
         let subdivision_id = subdivision.id;
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], Some(audit_log.id)).await?;
 
         // Create a locality (required by foreign key constraint)
         let locality = create_test_locality(subdivision_id, "LA", "Los Angeles");
         let locality_id = locality.id;
-        locality_repo.create_batch(vec![locality], audit_log.id).await?;
+        locality_repo.create_batch(vec![locality], Some(audit_log.id)).await?;
 
         let mut locations = Vec::new();
         for i in 0..3 {
@@ -136,14 +137,14 @@ mod tests {
             locations.push(location);
         }
 
-        let saved = location_repo.create_batch(locations, audit_log.id).await?;
+        let saved = location_repo.create_batch(locations, Some(audit_log.id)).await?;
 
         let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
         // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
         // in order to prevent duplicate key, we will create a new audit log for the delete.
         let delete_audit_log = create_test_audit_log();
         audit_log_repo.create(&delete_audit_log).await?;
-        let deleted_count = location_repo.delete_batch(&ids, delete_audit_log.id).await?;
+        let deleted_count = location_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
 
         assert_eq!(deleted_count, 3);
 
@@ -164,24 +165,24 @@ mod tests {
         let country_id = country.id;
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
-        country_repo.create_batch(vec![country], audit_log.id).await?;
+        country_repo.create_batch(vec![country], Some(audit_log.id)).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "ON", "Ontario");
         let subdivision_id = subdivision.id;
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], Some(audit_log.id)).await?;
 
         // Create a locality (required by foreign key constraint)
         let locality = create_test_locality(subdivision_id, "TO", "Toronto");
         let locality_id = locality.id;
-        locality_repo.create_batch(vec![locality], audit_log.id).await?;
+        locality_repo.create_batch(vec![locality], Some(audit_log.id)).await?;
 
         let location = create_test_location(
             locality_id,
             "123 Yonge St",
         );
 
-        let saved = location_repo.create_batch(vec![location], audit_log.id).await?;
+        let saved = location_repo.create_batch(vec![location], Some(audit_log.id)).await?;
 
         let mut ids = vec![saved[0].id];
         ids.push(Uuid::new_v4()); // Add non-existing ID
@@ -190,7 +191,7 @@ mod tests {
         // in order to prevent duplicate key, we will create a new audit log for the delete.
         let delete_audit_log = create_test_audit_log();
         audit_log_repo.create(&delete_audit_log).await?;
-        let deleted_count = location_repo.delete_batch(&ids, delete_audit_log.id).await?;
+        let deleted_count = location_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
 
         assert_eq!(deleted_count, 1); // Only one actually deleted
 

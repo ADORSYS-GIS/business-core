@@ -358,7 +358,7 @@ impl CreateBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
     async fn create_batch(
         &self,
         items: Vec<{Entity}Model>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
@@ -495,7 +495,7 @@ impl UpdateBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
     async fn update_batch(
         &self,
         items: Vec<{Entity}Model>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
         Self::update_batch_impl(self, items).await
     }
@@ -557,7 +557,7 @@ impl DeleteBatch<Postgres> for {Entity}RepositoryImpl {
     async fn delete_batch(
         &self,
         ids: &[Uuid],
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn Error + Send + Sync>> {
         Self::delete_batch_impl(self, ids).await
     }

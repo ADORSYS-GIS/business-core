@@ -66,14 +66,12 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("IT", "Italy");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "LD", "Lombardy");
         let subdivision_id = subdivision.id;
-        let audit_log_id = Uuid::new_v4();
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], None).await?;
 
         let mut localities = Vec::new();
         for i in 0..3 {
@@ -85,8 +83,7 @@ mod tests {
             localities.push(locality);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved = locality_repo.create_batch(localities.clone(), audit_log_id).await?;
+        let saved = locality_repo.create_batch(localities.clone(), None).await?;
 
         let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
         let loaded = locality_repo.load_batch(&ids).await?;
@@ -111,14 +108,12 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("ES", "Spain");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "MD", "Madrid");
         let subdivision_id = subdivision.id;
-        let audit_log_id = Uuid::new_v4();
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], None).await?;
 
         let locality = create_test_locality(
             subdivision_id,
@@ -126,8 +121,7 @@ mod tests {
             "Non-Existing Test",
         );
 
-        let audit_log_id = Uuid::new_v4();
-        let saved = locality_repo.create_batch(vec![locality], audit_log_id).await?;
+        let saved = locality_repo.create_batch(vec![locality], None).await?;
 
         let mut ids = vec![saved[0].id];
         ids.push(Uuid::new_v4()); // Add non-existing ID

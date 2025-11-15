@@ -66,7 +66,7 @@ impl UpdateBatch<Postgres, LocalityModel> for LocalityRepositoryImpl {
     async fn update_batch(
         &self,
         items: Vec<LocalityModel>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<LocalityModel>, Box<dyn Error + Send + Sync>> {
         Self::update_batch_impl(self, items).await
     }
@@ -78,7 +78,6 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::update_batch::UpdateBatch;
     use heapless::String as HeaplessString;
-    use uuid::Uuid;
     use super::super::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
@@ -91,14 +90,12 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("JP", "Japan");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "TK", "Tokyo");
         let subdivision_id = subdivision.id;
-        let audit_log_id = Uuid::new_v4();
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], None).await?;
 
         let mut localities = Vec::new();
         for i in 0..3 {
@@ -110,8 +107,7 @@ mod tests {
             localities.push(locality);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved = locality_repo.create_batch(localities, audit_log_id).await?;
+        let saved = locality_repo.create_batch(localities, None).await?;
 
         // Update localities
         let mut updated_localities = Vec::new();
@@ -120,8 +116,7 @@ mod tests {
             updated_localities.push(locality);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let updated = locality_repo.update_batch(updated_localities, audit_log_id).await?;
+        let updated = locality_repo.update_batch(updated_localities, None).await?;
 
         assert_eq!(updated.len(), 3);
         for locality in updated {
@@ -136,8 +131,7 @@ mod tests {
         let ctx = setup_test_context().await?;
         let locality_repo = &ctx.person_repos().locality_repository;
 
-        let audit_log_id = Uuid::new_v4();
-        let updated = locality_repo.update_batch(Vec::new(), audit_log_id).await?;
+        let updated = locality_repo.update_batch(Vec::new(), None).await?;
 
         assert_eq!(updated.len(), 0);
 

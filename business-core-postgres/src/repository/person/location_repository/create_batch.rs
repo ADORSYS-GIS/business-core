@@ -13,8 +13,9 @@ impl LocationRepositoryImpl {
     pub(super) async fn create_batch_impl(
         repo: &LocationRepositoryImpl,
         items: Vec<LocationModel>,
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<Vec<LocationModel>, Box<dyn Error + Send + Sync>> {
+        let audit_log_id = audit_log_id.ok_or("audit_log_id is required for LocationModel")?;
         if items.is_empty() {
             return Ok(Vec::new());
         }
@@ -127,7 +128,7 @@ impl CreateBatch<Postgres, LocationModel> for LocationRepositoryImpl {
     async fn create_batch(
         &self,
         items: Vec<LocationModel>,
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<Vec<LocationModel>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items, audit_log_id).await
     }
@@ -161,21 +162,21 @@ mod tests {
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
         country_repo
-            .create_batch(vec![country], audit_log.id)
+            .create_batch(vec![country], Some(audit_log.id))
             .await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "CA", "California");
         let subdivision_id = subdivision.id;
         country_subdivision_repo
-            .create_batch(vec![subdivision], audit_log.id)
+            .create_batch(vec![subdivision], Some(audit_log.id))
             .await?;
 
         // Create a locality (required by foreign key constraint)
         let locality = create_test_locality(subdivision_id, "SF", "San Francisco");
         let locality_id = locality.id;
         locality_repo
-            .create_batch(vec![locality], audit_log.id)
+            .create_batch(vec![locality], Some(audit_log.id))
             .await?;
 
         let mut locations = Vec::new();
@@ -185,7 +186,7 @@ mod tests {
         }
 
         let saved_locations = location_repo
-            .create_batch(locations.clone(), audit_log.id)
+            .create_batch(locations.clone(), Some(audit_log.id))
             .await?;
 
         assert_eq!(saved_locations.len(), 5);
@@ -208,7 +209,7 @@ mod tests {
 
         let audit_log = create_test_audit_log();
         let saved_locations = location_repo
-            .create_batch(Vec::new(), audit_log.id)
+            .create_batch(Vec::new(), Some(audit_log.id))
             .await?;
 
         assert_eq!(saved_locations.len(), 0);

@@ -92,11 +92,11 @@ For auditable entities, the repository methods that modify data require an `audi
 ### Standard Batch Operations
 
 ```rust
-async fn create_batch(&self, items: Vec<{Entity}Model>, audit_log_id: Uuid)
+async fn create_batch(&self, items: Vec<{Entity}Model>, audit_log_id: Option<Uuid>)
 
-async fn update_batch(&self, items: Vec<{Entity}Model>, audit_log_id: Uuid)
+async fn update_batch(&self, items: Vec<{Entity}Model>, audit_log_id: Option<Uuid>)
 
-async fn delete_batch(&self, ids: &[Uuid], audit_log_id: Uuid)
+async fn delete_batch(&self, ids: &[Uuid], audit_log_id: Option<Uuid>)
     -> Result<usize, Box<dyn Error + Send + Sync>>;
 ```
 

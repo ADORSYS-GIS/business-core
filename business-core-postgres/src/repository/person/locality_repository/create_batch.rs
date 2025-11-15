@@ -78,7 +78,7 @@ impl CreateBatch<Postgres, LocalityModel> for LocalityRepositoryImpl {
     async fn create_batch(
         &self,
         items: Vec<LocalityModel>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<LocalityModel>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
@@ -90,7 +90,6 @@ mod tests {
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
-    use uuid::Uuid;
     use super::super::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
@@ -103,14 +102,12 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("US", "United States");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "CA", "California");
         let subdivision_id = subdivision.id;
-        let audit_log_id = Uuid::new_v4();
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], None).await?;
 
         let mut localities = Vec::new();
         for i in 0..5 {
@@ -122,8 +119,7 @@ mod tests {
             localities.push(locality);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_localities = locality_repo.create_batch(localities.clone(), audit_log_id).await?;
+        let saved_localities = locality_repo.create_batch(localities.clone(), None).await?;
 
         assert_eq!(saved_localities.len(), 5);
 
@@ -140,8 +136,7 @@ mod tests {
         let ctx = setup_test_context().await?;
         let locality_repo = &ctx.person_repos().locality_repository;
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_localities = locality_repo.create_batch(Vec::new(), audit_log_id).await?;
+        let saved_localities = locality_repo.create_batch(Vec::new(), None).await?;
 
         assert_eq!(saved_localities.len(), 0);
 

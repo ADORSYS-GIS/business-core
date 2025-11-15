@@ -78,7 +78,7 @@ impl CreateBatch<Postgres, CountrySubdivisionModel> for CountrySubdivisionReposi
     async fn create_batch(
         &self,
         items: Vec<CountrySubdivisionModel>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<CountrySubdivisionModel>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
@@ -90,7 +90,6 @@ mod tests {
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
-    use uuid::Uuid;
     use super::super::test_utils::test_utils::{create_test_country, create_test_country_subdivision};
 
     #[tokio::test]
@@ -102,8 +101,7 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("US", "United States");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         let mut subdivisions = Vec::new();
         for i in 0..5 {
@@ -115,8 +113,7 @@ mod tests {
             subdivisions.push(subdivision);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_subdivisions = country_subdivision_repo.create_batch(subdivisions.clone(), audit_log_id).await?;
+        let saved_subdivisions = country_subdivision_repo.create_batch(subdivisions.clone(), None).await?;
 
         assert_eq!(saved_subdivisions.len(), 5);
 
@@ -133,8 +130,7 @@ mod tests {
         let ctx = setup_test_context().await?;
         let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_subdivisions = country_subdivision_repo.create_batch(Vec::new(), audit_log_id).await?;
+        let saved_subdivisions = country_subdivision_repo.create_batch(Vec::new(), None).await?;
 
         assert_eq!(saved_subdivisions.len(), 0);
 

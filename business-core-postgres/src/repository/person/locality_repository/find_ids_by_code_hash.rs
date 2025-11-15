@@ -21,7 +21,6 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::utils::hash_as_i64;
     use heapless::String as HeaplessString;
-    use uuid::Uuid;
     use super::super::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
@@ -34,14 +33,12 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("FR", "France");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         // Create a country subdivision (required by foreign key constraint)
         let subdivision = create_test_country_subdivision(country_id, "IDF", "Île-de-France");
         let subdivision_id = subdivision.id;
-        let audit_log_id = Uuid::new_v4();
-        country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+        country_subdivision_repo.create_batch(vec![subdivision], None).await?;
 
         let mut locality = create_test_locality(
             subdivision_id,
@@ -51,8 +48,7 @@ mod tests {
         let unique_code = "TC1";
         locality.code = HeaplessString::try_from(unique_code).unwrap();
         
-        let audit_log_id = Uuid::new_v4();
-        let saved = locality_repo.create_batch(vec![locality.clone()], audit_log_id).await?;
+        let saved = locality_repo.create_batch(vec![locality.clone()], None).await?;
 
         let unique_code_hash = hash_as_i64(&unique_code)?;
         let found_ids = locality_repo.find_ids_by_code_hash(unique_code_hash).await?;
