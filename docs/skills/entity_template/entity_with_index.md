@@ -866,7 +866,7 @@ For **each operation**, include tests for:
 ```rust
 #[cfg(test)]
 mod tests {
-    use crate::test_helper::{setup_test_context, setup_test_context_and_listen};
+    use crate::test_helper::{random, setup_test_context, setup_test_context_and_listen};
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
@@ -881,12 +881,7 @@ mod tests {
         let pool = ctx.pool();
 
         // Create a test entity with unique identifiable fields to avoid conflicts
-        let unique_field = {
-            let uuid = uuid::Uuid::new_v4();
-            let uuid_bytes = uuid.as_bytes();
-            // Generate unique value based on entity requirements
-            format!("XX-{:02X}{:02X}", uuid_bytes[0], uuid_bytes[1])
-        };
+        let unique_field = random(5);
         let test_entity = create_test_{entity}(&unique_field, "Test Entity");
         let entity_idx = test_entity.to_index();
     

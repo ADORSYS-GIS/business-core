@@ -86,7 +86,7 @@ impl CreateBatch<Postgres, CountrySubdivisionModel> for CountrySubdivisionReposi
 
 #[cfg(test)]
 mod tests {
-    use crate::test_helper::{setup_test_context, setup_test_context_and_listen};
+    use crate::test_helper::{random, setup_test_context, setup_test_context_and_listen};
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
@@ -149,15 +149,11 @@ mod tests {
         let pool = ctx.pool();
 
         // Create a test country first (required by foreign key)
-        let test_country = create_test_country("ZZ", "Test Country");
+        let test_country = create_test_country(&random(2), "Test Country");
         let country_id = test_country.id;
 
         // Create a test country subdivision with a unique code to avoid conflicts
-        let unique_code = {
-            let uuid = uuid::Uuid::new_v4();
-            let uuid_bytes = uuid.as_bytes();
-            format!("SD-{:02X}{:02X}", uuid_bytes[0], uuid_bytes[1])
-        };
+        let unique_code = random(5);
         let test_subdivision = create_test_country_subdivision(country_id, &unique_code, "Test Subdivision");
         let subdivision_idx = test_subdivision.to_index();
     

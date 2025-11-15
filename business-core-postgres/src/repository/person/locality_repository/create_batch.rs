@@ -86,7 +86,7 @@ impl CreateBatch<Postgres, LocalityModel> for LocalityRepositoryImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_helper::{setup_test_context, setup_test_context_and_listen};
+    use crate::test_helper::{random, setup_test_context, setup_test_context_and_listen};
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
@@ -156,19 +156,15 @@ mod tests {
         let pool = ctx.pool();
 
         // Create a test country first (required by foreign key)
-        let test_country = create_test_country("ZZ", "Test Country");
+        let test_country = create_test_country(&random(2), "Test Country");
         let country_id = test_country.id;
 
         // Create a test country subdivision (required by foreign key)
-        let test_subdivision = create_test_country_subdivision(country_id, "ZZ", "Test Subdivision");
+        let test_subdivision = create_test_country_subdivision(country_id, &random(5), "Test Subdivision");
         let subdivision_id = test_subdivision.id;
 
         // Create a test locality with a unique code to avoid conflicts
-        let unique_code = {
-            let uuid = uuid::Uuid::new_v4();
-            let uuid_bytes = uuid.as_bytes();
-            format!("LOC-{:02X}{:02X}{:02X}{:02X}", uuid_bytes[0], uuid_bytes[1], uuid_bytes[2], uuid_bytes[3])
-        };
+        let unique_code = random(5);
         let test_locality = create_test_locality(subdivision_id, &unique_code, "Test Locality");
         let locality_idx = test_locality.to_index();
     

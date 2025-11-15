@@ -760,3 +760,132 @@ This creates an immutable audit chain where each record cryptographically links 
 ## License
 
 Same as business-core project
+
+### Cache Notification on Direct Insert Test
+
+This test verifies that a direct `INSERT` into the entity's table (and its index table) correctly triggers a database notification that the application's cache listener picks up. This ensures that even database changes made outside the application's repository layer (e.g., by another service or a DBA) are reflected in the cache.
+
+**Key steps in this test:**
+1.  Set up a test context with a `CacheNotificationListener` using `setup_test_context_and_listen()`.
+2.  Create all prerequisite records (e.g., country, subdivision, locality, audit_log) via direct `sqlx::query` inserts. This simulates an external process writing to the database.
+3.  Insert the main entity and its index record directly.
+4.  Wait for a short duration to allow the notification to be processed.
+5.  Verify that the entity now exists in the repository's cache.
+6.  Delete all created records directly.
+7.  Wait again for the delete notification to be processed.
+8.  Verify that the entity has been removed from the cache.
+
+```rust
+#[tokio::test]
+async fn test_{entity}_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Setup test context with the handler
+    let ctx = setup_test_context_and_listen().await?;
+    let pool = ctx.pool();
+
+    // Create all prerequisite records for the entity. For example, for a "location",
+    // you would need to create a country, country_subdivision, and locality first.
+    // These should be created using direct SQL inserts to simulate an external process.
+    let prerequisite_code = random(2);
+    // ... create prerequisite records here ...
+
+    // Create a test entity
+    let test_{entity} = create_test_{entity}(/*...foreign keys...*/, &random(5));
+    let {entity}_idx = test_{entity}.to_index();
+
+    // Give listener time to start
+    sleep(Duration::from_millis(2000)).await;
+
+    // Insert prerequisite records directly into the database
+    // ... insert prerequisite records here ...
+
+    // Insert the audit log record directly
+    let audit_log = create_test_audit_log();
+    sqlx::query(
+        r#"
+        INSERT INTO audit_log (id, updated_at, updated_by_person_id)
+        VALUES ($1, $2, $3)
+        "#,
+    )
+    .bind(audit_log.id)
+    .bind(audit_log.updated_at)
+    .bind(audit_log.updated_by_person_id)
+    .execute(&**pool)
+    .await
+    .expect("Failed to insert audit log");
+
+    // Prepare the entity for insertion (compute hash, etc.)
+    let mut test_{entity}_for_hashing = test_{entity}.clone();
+    test_{entity}_for_hashing.hash = 0;
+    test_{entity}_for_hashing.audit_log_id = Some(audit_log.id);
+    let computed_hash =
+        business_core_db::utils::hash_as_i64(&test_{entity}_for_hashing).unwrap();
+    let final_{entity} = {Entity}Model {
+        hash: computed_hash,
+        audit_log_id: Some(audit_log.id),
+        ..test_{entity}
+    };
+
+    // Insert the main entity record directly
+    sqlx::query(
+        r#"
+        INSERT INTO {table_name}
+        (/*...fields...*/, hash, audit_log_id)
+        VALUES (/*...values...*/)
+        "#,
+    )
+    // ... bind all fields from final_{entity} ...
+    .execute(&**pool)
+    .await
+    .expect("Failed to insert {entity}");
+
+    // Insert the entity index record directly
+    sqlx::query("INSERT INTO {table_name}_idx (/*...fields...*/) VALUES (/*...values...*/) ")
+        // ... bind all fields from {entity}_idx ...
+        .execute(&**pool)
+        .await
+        .expect("Failed to insert {entity} index");
+
+    // Give time for notification to be processed
+    sleep(Duration::from_millis(500)).await;
+
+    let {entity}_repo = &ctx.person_repos().{entity}_repository;
+
+    // Verify the cache was updated
+    let cache = {entity}_repo.{entity}_idx_cache.read().await;
+    assert!(
+        cache.contains_primary(&{entity}_idx.id),
+        "{Entity} should be in cache after insert"
+    );
+
+    // ... additional cache content verification ...
+
+    drop(cache);
+
+    // Delete all created records
+    sqlx::query("DELETE FROM {table_name} WHERE id = $1")
+        .bind({entity}_idx.id)
+        .execute(&**pool)
+        .await
+        .expect("Failed to delete {entity}");
+
+    sqlx::query("DELETE FROM audit_log WHERE id = $1")
+        .bind(audit_log.id)
+        .execute(&**pool)
+        .await
+        .expect("Failed to delete audit log");
+
+    // ... delete all prerequisite records ...
+
+    // Give time for delete notification to be processed
+    sleep(Duration::from_millis(500)).await;
+
+    // Verify the cache entry was removed
+    let cache = {entity}_repo.{entity}_idx_cache.read().await;
+    assert!(
+        !cache.contains_primary(&{entity}_idx.id),
+        "{Entity} should be removed from cache after delete"
+    );
+
+    Ok(())
+}
+```
