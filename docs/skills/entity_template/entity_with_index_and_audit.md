@@ -21,8 +21,8 @@ This skill builds upon the base indexable entity template by adding:
 ## Template Reference
 
 The audit pattern is based on the Location entity implementation:
-- **Model**: `ledger-banking-rust/banking-db/src/models/person/location.rs`
-- **Repository**: `ledger-banking-rust/banking-db-postgres/src/repository/person/location_repository/`
+- **Model**: `business-core/business-core-db/src/models/person/location.rs`
+- **Repository**: `business-core/business-core-postgres/src/repository/person/location_repository/`
 - **Audit Hash Logic**: Integrated directly within the `{Entity}Model`'s audit fields.
 - **Auditable Trait**: `business-core/business-core-db/src/models/auditable.rs`
 
@@ -370,7 +370,10 @@ A complete migration script for an auditable entity includes the main table, an 
 ```sql
 -- Migration: Initial {Entity} Schema with Audit Support
 -- Description: Creates {entity}-related tables with audit trail.
-
+ 
+-- Enum Types (if any)
+CREATE TYPE IF NOT EXISTS {enum_name} AS ENUM ('Variant1', 'Variant2');
+ 
 -- Main {Entity} Table
 -- Stores the current state of the entity.
 CREATE TABLE IF NOT EXISTS {table_name} (
@@ -467,72 +470,159 @@ Beyond the base template tests, add:
 
 ```rust
 #[tokio::test]
-async fn test_create_batch_creates_audit_record() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ctx = setup_test_context().await?;
-    let repo = &ctx.{module}_repos().{entity}_repository;
-    
-    let entity = create_test_{entity}(/* params */);
-    let audit_log_id = Uuid::new_v4();
-    
-    // Create entity
-    let saved = repo.create_batch(vec![entity.clone()], audit_log_id).await?;
-    
-    // Verify audit record exists
-    let audit_records = load_audit_records(&ctx, saved[0].id).await?;
-    assert_eq!(audit_records.len(), 1);
-    assert_eq!(audit_records[0].audit_log_id, Some(audit_log_id));
-    
+    let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+    let country_repo = &ctx.person_repos().country_repository;
+    let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+    let locality_repo = &ctx.person_repos().locality_repository;
+    let location_repo = &ctx.person_repos().location_repository;
+
+    // First create a country (required by foreign key constraint)
+    let country = create_test_country("US", "United States");
+    let country_id = country.id;
+    let audit_log = create_test_audit_log();
+    audit_log_repo.create(&audit_log).await?;
+    country_repo.create_batch(vec![country], audit_log.id).await?;
+
+    // Create a country subdivision (required by foreign key constraint)
+    let subdivision = create_test_country_subdivision(country_id, "CA", "California");
+    let subdivision_id = subdivision.id;
+    country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+
+    // Create a locality (required by foreign key constraint)
+    let locality = create_test_locality(subdivision_id, "SF", "San Francisco");
+    let locality_id = locality.id;
+    locality_repo.create_batch(vec![locality], audit_log.id).await?;
+
+    let mut locations = Vec::new();
+    for i in 0..5 {
+        let location = create_test_location(
+            locality_id,
+            &format!("{} Main St", i),
+        );
+        locations.push(location);
+    }
+
+    let saved_locations = location_repo.create_batch(locations.clone(), audit_log.id).await?;
+
+    assert_eq!(saved_locations.len(), 5);
+
+    for saved_location in &saved_locations {
+        assert_eq!(saved_location.locality_id, locality_id);
+        assert!(saved_location.street_line1.as_str().ends_with(" Main St"));
+    }
+
     Ok(())
 }
 
 #[tokio::test]
-async fn test_update_batch_creates_new_audit_record() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn test_update_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ctx = setup_test_context().await?;
-    let repo = &ctx.{module}_repos().{entity}_repository;
-    
-    // Initial create
-    let entity = create_test_{entity}(/* params */);
-    let audit_log_id_1 = Uuid::new_v4();
-    let saved = repo.create_batch(vec![entity.clone()], audit_log_id_1).await?;
-    
-    // Update
-    let mut updated_entity = saved[0].clone();
-    updated_entity.field1 = /* new value */;
-    let audit_log_id_2 = Uuid::new_v4();
-    repo.update_batch(vec![updated_entity], audit_log_id_2).await?;
-    
-    // Verify two audit records
-    let audit_records = load_audit_records(&ctx, saved[0].id).await?;
-    assert_eq!(audit_records.len(), 2);
-    assert_eq!(audit_records[0].audit_log_id, Some(audit_log_id_1));
-    assert_eq!(audit_records[1].audit_log_id, Some(audit_log_id_2));
-    
-    Ok(())
-}
+    let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+    let country_repo = &ctx.person_repos().country_repository;
+    let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+    let locality_repo = &ctx.person_repos().locality_repository;
+    let location_repo = &ctx.person_repos().location_repository;
 
-#[tokio::test]
-async fn test_audit_hash_integrity() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let ctx = setup_test_context().await?;
-    let repo = &ctx.{module}_repos().{entity}_repository;
-    
-    let entity = create_test_{entity}(/* params */);
-        let audit_log_id = Uuid::new_v4();
-        let saved = repo.create_batch(vec![entity.clone()], audit_log_id).await?;
-        
-        // Load audit record and verify hash
-        let audit_records = load_audit_records(&ctx, saved[0].id).await?;
-        let stored_entity = &audit_records[0];
-        
-        // Recompute hash
-        let mut entity_for_hashing = stored_entity.clone();
-        entity_for_hashing.hash = 0;
-        let computed_hash = hash_as_i64(&entity_for_hashing)?;
-        
-        assert_eq!(stored_entity.hash, computed_hash, "Hash mismatch");
-    
+    // First create a country (required by foreign key constraint)
+    let country = create_test_country("JP", "Japan");
+    let country_id = country.id;
+    let audit_log = create_test_audit_log();
+    audit_log_repo.create(&audit_log).await?;
+    country_repo.create_batch(vec![country], audit_log.id).await?;
+
+    // Create a country subdivision (required by foreign key constraint)
+    let subdivision = create_test_country_subdivision(country_id, "TK", "Tokyo");
+    let subdivision_id = subdivision.id;
+    country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+
+    // Create a locality (required by foreign key constraint)
+    let locality = create_test_locality(subdivision_id, "SH", "Shibuya");
+    let locality_id = locality.id;
+    locality_repo.create_batch(vec![locality], audit_log.id).await?;
+
+    let mut locations = Vec::new();
+    for i in 0..3 {
+        let location = create_test_location(
+            locality_id,
+            &format!("{} Shibuya Crossing", i),
+        );
+        locations.push(location);
+    }
+
+    let saved = location_repo.create_batch(locations, audit_log.id).await?;
+
+    // Update locations
+    // # Attention, we are updating in the same transaction. This will not happen in a rela scenario
+    // in orther to prevent duplicate key, we will create a new audit log for the update.
+    let update_audit_log = create_test_audit_log();
+    audit_log_repo.create(&update_audit_log).await?;
+    let mut updated_locations = Vec::new();
+    for mut location in saved {
+        location.street_line1 = HeaplessString::try_from("Updated Address").unwrap();
+        updated_locations.push(location);
+    }
+
+    let updated = location_repo.update_batch(updated_locations, update_audit_log.id).await?;
+
+    assert_eq!(updated.len(), 3);
+    for location in updated {
+        assert_eq!(location.street_line1.as_str(), "Updated Address");
+    }
+
     Ok(())
 }
 ```
+
+#[tokio::test]
+async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let ctx = setup_test_context().await?;
+    let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+    let country_repo = &ctx.person_repos().country_repository;
+    let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+    let locality_repo = &ctx.person_repos().locality_repository;
+    let location_repo = &ctx.person_repos().location_repository;
+
+    // First create a country (required by foreign key constraint)
+    let country = create_test_country("US", "United States");
+    let country_id = country.id;
+    let audit_log = create_test_audit_log();
+    audit_log_repo.create(&audit_log).await?;
+    country_repo.create_batch(vec![country], audit_log.id).await?;
+
+    // Create a country subdivision (required by foreign key constraint)
+    let subdivision = create_test_country_subdivision(country_id, "CA", "California");
+    let subdivision_id = subdivision.id;
+    country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+
+    // Create a locality (required by foreign key constraint)
+    let locality = create_test_locality(subdivision_id, "LA", "Los Angeles");
+    let locality_id = locality.id;
+    locality_repo.create_batch(vec![locality], audit_log.id).await?;
+
+    let mut locations = Vec::new();
+    for i in 0..3 {
+        let location = create_test_location(
+            locality_id,
+            &format!("{} Sunset Blvd", i),
+        );
+        locations.push(location);
+    }
+
+    let saved = location_repo.create_batch(locations, audit_log.id).await?;
+
+    let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
+    // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
+    // in order to prevent duplicate key, we will create a new audit log for the delete.
+    let delete_audit_log = create_test_audit_log();
+    audit_log_repo.create(&delete_audit_log).await?;
+    let deleted_count = location_repo.delete_batch(&ids, delete_audit_log.id).await?;
+
+    assert_eq!(deleted_count, 3);
+
+    Ok(())
+}
 
 ---
 
@@ -661,7 +751,7 @@ This creates an immutable audit chain where each record cryptographically links 
 - **Base Template**: [Entity with Index](entity_with_index.md)
 - **Audit Traits**: `business-core/business-core-db/src/models/auditable.rs`
 - **Audit Models**: `business-core/business-core-db/src/models/audit/`
-- **Complete Example**: Location entity in `ledger-banking-rust`
+- **Complete Example**: Location entity in `business-core`
 - **Hash Library**: [twox-hash](https://docs.rs/twox-hash/)
 - **CBOR Library**: [ciborium](https://docs.rs/ciborium/)
 

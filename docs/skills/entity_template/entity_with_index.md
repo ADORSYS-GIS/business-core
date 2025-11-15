@@ -107,10 +107,24 @@ use crate::utils::hash_as_i64;
 
 /// # Documentation
 /// - {Entity description}
+///
+/// ## Enum Types
+/// If your entity includes an enum, define it with `sqlx::Type`.
+///
+/// ```rust
+/// /// Database model for {enum_name} enum
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+/// #[sqlx(type_name = "{enum_name}", rename_all = "PascalCase")]
+/// pub enum {EnumName} {
+///     Variant1,
+///     Variant2,
+/// }
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct {Entity}Model {
     pub id: Uuid,
     // ... fields from specification
+    // pub enum_field: {EnumName},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -1311,6 +1325,8 @@ pub use {entity}_repository::{Entity}RepositoryImpl;
 | `Option<i64>` | `BIGINT` | Yes | `row.try_get("field").ok()` |
 | `String` | `TEXT` | No | `row.get("field")` |
 | `Option<String>` | `TEXT` | Yes | `row.get("field")` |
+| `{EnumName}` | `{enum_name}` (custom) | No | `row.get("field")` |
+| `Option<{EnumName}>` | `{enum_name}` (custom) | Yes | `row.get("field")` |
 
 ### Index Key Types
 
@@ -1329,10 +1345,14 @@ pub use {entity}_repository::{Entity}RepositoryImpl;
 -- Migration: Initial {Entity} Schema
 -- Description: Creates {entity}-related tables and indexes
 
+-- Enum Types (if any)
+CREATE TYPE IF NOT EXISTS {enum_name} AS ENUM ('Variant1', 'Variant2');
+
 -- {Entity} Table
 CREATE TABLE IF NOT EXISTS {table_name} (
     id UUID PRIMARY KEY,
     -- ... other fields
+    -- enum_field {enum_name} NOT NULL
 );
 
 -- {Entity} Index Table
@@ -1363,6 +1383,9 @@ DROP TRIGGER IF EXISTS {table_name}_idx_notify ON {table_name}_idx;
 -- Drop tables (index table first due to foreign key constraint)
 DROP TABLE IF EXISTS {table_name}_idx CASCADE;
 DROP TABLE IF EXISTS {table_name} CASCADE;
+
+-- Drop enum types (if any)
+DROP TYPE IF EXISTS {enum_name};
 ```
 
 ---

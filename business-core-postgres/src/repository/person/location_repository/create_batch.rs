@@ -132,3 +132,70 @@ impl CreateBatch<Postgres, LocationModel> for LocationRepositoryImpl {
         Self::create_batch_impl(self, items, audit_log_id).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::test_helper::setup_test_context;
+    use business_core_db::{repository::create_batch::CreateBatch};
+    use super::super::test_utils::{create_test_audit_log, create_test_country, create_test_country_subdivision, create_test_locality, create_test_location};
+
+    #[tokio::test]
+    async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+        let country_repo = &ctx.person_repos().country_repository;
+        let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
+        let locality_repo = &ctx.person_repos().locality_repository;
+        let location_repo = &ctx.person_repos().location_repository;
+
+        // First create a country (required by foreign key constraint)
+        let country = create_test_country("US", "United States");
+        let country_id = country.id;
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+        country_repo.create_batch(vec![country], audit_log.id).await?;
+
+        // Create a country subdivision (required by foreign key constraint)
+        let subdivision = create_test_country_subdivision(country_id, "CA", "California");
+        let subdivision_id = subdivision.id;
+        country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
+
+        // Create a locality (required by foreign key constraint)
+        let locality = create_test_locality(subdivision_id, "SF", "San Francisco");
+        let locality_id = locality.id;
+        locality_repo.create_batch(vec![locality], audit_log.id).await?;
+
+        let mut locations = Vec::new();
+        for i in 0..5 {
+            let location = create_test_location(
+                locality_id,
+                &format!("{} Main St", i),
+            );
+            locations.push(location);
+        }
+
+        let saved_locations = location_repo.create_batch(locations.clone(), audit_log.id).await?;
+
+        assert_eq!(saved_locations.len(), 5);
+
+        for saved_location in &saved_locations {
+            assert_eq!(saved_location.locality_id, locality_id);
+            assert!(saved_location.street_line1.as_str().ends_with(" Main St"));
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_create_batch_empty() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let location_repo = &ctx.person_repos().location_repository;
+
+        let audit_log = create_test_audit_log();
+        let saved_locations = location_repo.create_batch(Vec::new(), audit_log.id).await?;
+
+        assert_eq!(saved_locations.len(), 0);
+
+        Ok(())
+    }
+}

@@ -8,3 +8,6 @@ DROP TRIGGER IF EXISTS location_idx_notify ON location_idx;
 DROP TABLE IF EXISTS location_idx CASCADE;
 DROP TABLE IF EXISTS location_audit CASCADE;
 DROP TABLE IF EXISTS location CASCADE;
+
+-- Drop the custom type
+DROP TYPE IF EXISTS location_type;

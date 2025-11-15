@@ -1,6 +1,8 @@
 -- Migration: Initial Location Schema with Audit Support
 -- Description: Creates location-related tables with audit trail.
 
+CREATE TYPE location_type AS ENUM ('Residential', 'Business', 'Mailing', 'Temporary', 'Branch', 'Community', 'Other');
+ 
 -- Main Location Table
 -- Stores the current state of the entity.
 CREATE TABLE IF NOT EXISTS location (
@@ -14,7 +16,7 @@ CREATE TABLE IF NOT EXISTS location (
     latitude DECIMAL,
     longitude DECIMAL,
     accuracy_meters REAL,
-    location_type VARCHAR(20) NOT NULL,
+    location_type location_type NOT NULL,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -42,7 +44,7 @@ CREATE TABLE IF NOT EXISTS location_audit (
     latitude DECIMAL,
     longitude DECIMAL,
     accuracy_meters REAL,
-    location_type VARCHAR(20) NOT NULL,
+    location_type location_type NOT NULL,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,
