@@ -11,6 +11,7 @@ This skill builds upon the base indexable entity template by adding:
 - ✅ **Hash-based verification** using xxHash64 for audit integrity
 - ✅ **Audit log integration** with audit_log_id references
 - ✅ **Serialization-based hashing** using CBOR encoding
+- ✅ **Transaction-level entity tracking** via the `audit_link` table
 
 ## Prerequisites
 
@@ -180,6 +181,40 @@ match &repo.executor {
     }
 }
 
+// Create audit link to track the entity modification in the transaction
+let audit_link = AuditLinkModel {
+    audit_log_id,
+    entity_id: entity.id,
+    entity_type: EntityType::{Entity}, // e.g., EntityType::Location
+};
+let audit_link_query = sqlx::query(
+    r#"
+    INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
+    VALUES ($1, $2, $3)
+    "#,
+)
+.bind(audit_link.audit_log_id)
+.bind(audit_link.entity_id)
+.bind(audit_link.entity_type);
+
+
+ // Execute in transaction (audit first!)
+ match &repo.executor {
+     Executor::Pool(pool) => {
+         audit_insert_query.execute(&**pool).await?;
+         entity_insert_query.execute(&**pool).await?;
+         idx_insert_query.execute(&**pool).await?;
+         audit_link_query.execute(&**pool).await?;
+     }
+     Executor::Tx(tx) => {
+         let mut tx = tx.lock().await;
+         audit_insert_query.execute(&mut **tx).await?;
+         entity_insert_query.execute(&mut **tx).await?;
+         idx_insert_query.execute(&mut **tx).await?;
+         audit_link_query.execute(&mut **tx).await?;
+     }
+ }
+
 // Update cache (same as base template)
 let new_idx = {Entity}IdxModel {
     id: entity.id,
@@ -280,6 +315,37 @@ match &repo.executor {
     }
 }
 
+// Create audit link
+let audit_link = AuditLinkModel {
+    audit_log_id,
+    entity_id: entity.id,
+    entity_type: EntityType::{Entity},
+};
+let audit_link_query = sqlx::query(
+    r#"
+    INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
+    VALUES ($1, $2, $3)
+    "#,
+)
+.bind(audit_link.audit_log_id)
+.bind(audit_link.entity_id)
+.bind(audit_link.entity_type);
+
+// Execute in transaction (audit first!)
+match &repo.executor {
+    Executor::Pool(pool) => {
+        audit_insert_query.execute(&**pool).await?;
+        entity_update_query.execute(&**pool).await?;
+        audit_link_query.execute(&**pool).await?;
+    }
+    Executor::Tx(tx) => {
+        let mut tx = tx.lock().await;
+        audit_insert_query.execute(&mut **tx).await?;
+        entity_update_query.execute(&mut **tx).await?;
+        audit_link_query.execute(&mut **tx).await?;
+    }
+}
+
 // Update cache (remove old, add new)
 let new_idx = {Entity}IdxModel {
     id: entity.id,
@@ -355,6 +421,38 @@ for entity in &entities_to_delete {
             entity_delete_query.execute(&mut **tx).await?;
         }
     }
+    
+    // Create audit link for the deleted entity
+    let audit_link = AuditLinkModel {
+        audit_log_id,
+        entity_id: entity.id,
+        entity_type: EntityType::{Entity},
+    };
+    let audit_link_query = sqlx::query(
+        r#"
+        INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
+        VALUES ($1, $2, $3)
+        "#,
+    )
+    .bind(audit_link.audit_log_id)
+    .bind(audit_link.entity_id)
+    .bind(audit_link.entity_type);
+    
+    
+    // 5. Execute in transaction (audit first!)
+    match &repo.executor {
+        Executor::Pool(_pool) => {
+            // In a real scenario, this would be part of a larger transaction
+            // managed by a Unit of Work.
+            panic!("Delete should be executed within a transaction");
+        }
+        Executor::Tx(tx) => {
+            let mut tx = tx.lock().await;
+            audit_insert_query.execute(&mut **tx).await?;
+            entity_delete_query.execute(&mut **tx).await?;
+            audit_link_query.execute(&mut **tx).await?;
+        }
+    }
 
     // 6. Remove the entity from the cache
     repo.{entity}_idx_cache.read().await.remove(&entity.id);
@@ -373,6 +471,9 @@ A complete migration script for an auditable entity includes the main table, an 
  
 -- Enum Types (if any)
 CREATE TYPE IF NOT EXISTS {enum_name} AS ENUM ('Variant1', 'Variant2');
+
+-- Enum for auditable entity types
+CREATE TYPE entity_type AS ENUM ('LOCATION', ...);
  
 -- Main {Entity} Table
 -- Stores the current state of the entity.
@@ -421,7 +522,19 @@ CREATE TABLE IF NOT EXISTS {table_name}_audit (
 -- even if the main entity record is deleted.
 CREATE INDEX IF NOT EXISTS idx_{table_name}_audit_audit_log_id
     ON {table_name}_audit(audit_log_id);
-```
+    
+    -- Audit Link Table
+    -- Tracks all entities modified in a single transaction.
+    CREATE TABLE IF NOT EXISTS audit_link (
+        audit_log_id UUID NOT NULL REFERENCES audit_log(id),
+        entity_id UUID NOT NULL,
+        entity_type entity_type NOT NULL,
+        PRIMARY KEY (audit_log_id, entity_id)
+    );
+    
+    -- Index for audit_link table
+    CREATE INDEX IF NOT EXISTS idx_audit_link_audit_log_id ON audit_link(audit_log_id);
+    ```
 
 ---
 

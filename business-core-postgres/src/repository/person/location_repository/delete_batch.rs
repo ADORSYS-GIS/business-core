@@ -1,3 +1,4 @@
+use business_core_db::models::audit::{AuditLinkModel, EntityType};
 use async_trait::async_trait;
 use business_core_db::repository::load_batch::LoadBatch;
 use business_core_db::repository::delete_batch::DeleteBatch;
@@ -66,6 +67,24 @@ impl LocationRepositoryImpl {
                         .bind(entity.id)
                         .execute(&mut **transaction)
                         .await?;
+
+                    // Create audit link
+                    let audit_link = AuditLinkModel {
+                        audit_log_id,
+                        entity_id: entity.id,
+                        entity_type: EntityType::Location,
+                    };
+                    sqlx::query(
+                        r#"
+                        INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
+                        VALUES ($1, $2, $3)
+                        "#,
+                    )
+                    .bind(audit_link.audit_log_id)
+                    .bind(audit_link.entity_id)
+                    .bind(audit_link.entity_type)
+                    .execute(&mut **transaction)
+                    .await?;
                     
                     deleted_count += result.rows_affected() as usize;
                 }
