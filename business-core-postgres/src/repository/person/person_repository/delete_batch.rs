@@ -113,3 +113,76 @@ impl DeleteBatch<Postgres> for PersonRepositoryImpl {
         Self::delete_batch_impl(self, ids, audit_log_id).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::repository::person::test_utils::create_test_audit_log;
+    use crate::test_helper::setup_test_context;
+    use business_core_db::repository::create_batch::CreateBatch;
+    use business_core_db::repository::delete_batch::DeleteBatch;
+    use uuid::Uuid;
+    use business_core_db::models::person::person::PersonType;
+    use crate::repository::person::person_repository::test_utils::create_test_person;
+
+    #[tokio::test]
+    async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+        let person_repo = &ctx.person_repos().person_repository;
+
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+
+        let mut persons = Vec::new();
+        for i in 0..3 {
+            let person = create_test_person(
+                &format!("Person to Delete {}", i),
+                PersonType::System,
+            );
+            persons.push(person);
+        }
+
+        let saved = person_repo.create_batch(persons, Some(audit_log.id)).await?;
+
+        let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
+        // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
+        // in order to prevent duplicate key, we will create a new audit log for the delete.
+        let delete_audit_log = create_test_audit_log();
+        audit_log_repo.create(&delete_audit_log).await?;
+        let deleted_count = person_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
+
+        assert_eq!(deleted_count, 3);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_delete_batch_with_non_existing() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+        let person_repo = &ctx.person_repos().person_repository;
+
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+
+        let person = create_test_person(
+            "Person to Delete",
+            PersonType::Integration,
+        );
+
+        let saved = person_repo.create_batch(vec![person], Some(audit_log.id)).await?;
+
+        let mut ids = vec![saved[0].id];
+        ids.push(Uuid::new_v4()); // Add non-existing ID
+
+        // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
+        // in order to prevent duplicate key, we will create a new audit log for the delete.
+        let delete_audit_log = create_test_audit_log();
+        audit_log_repo.create(&delete_audit_log).await?;
+        let deleted_count = person_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
+
+        assert_eq!(deleted_count, 1); // Only one actually deleted
+
+        Ok(())
+    }
+}

@@ -60,6 +60,7 @@ pub struct {Entity}Model {
     /// Reference to the current audit log entry for this entity
     /// - None: for new entities not yet created
     /// - Some(uuid): updated on every create/update operation to reference the latest audit log
+    /// 
     /// This field, together with `id`, forms the composite primary key in the audit table
     pub audit_log_id: Option<Uuid>,
 }

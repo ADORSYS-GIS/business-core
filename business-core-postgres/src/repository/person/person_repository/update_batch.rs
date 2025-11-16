@@ -182,3 +182,70 @@ impl UpdateBatch<Postgres, PersonModel> for PersonRepositoryImpl {
         Self::update_batch_impl(self, items, audit_log_id).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::repository::person::test_utils::create_test_audit_log;
+    use crate::test_helper::setup_test_context;
+    use business_core_db::repository::create_batch::CreateBatch;
+    use business_core_db::repository::update_batch::UpdateBatch;
+    use heapless::String as HeaplessString;
+    use business_core_db::models::person::person::PersonType;
+    use crate::repository::person::person_repository::test_utils::create_test_person;
+
+    #[tokio::test]
+    async fn test_update_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+        let person_repo = &ctx.person_repos().person_repository;
+
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+
+        let mut persons = Vec::new();
+        for i in 0..3 {
+            let person = create_test_person(
+                &format!("Original Person {}", i),
+                PersonType::Natural,
+            );
+            persons.push(person);
+        }
+
+        let saved = person_repo.create_batch(persons, Some(audit_log.id)).await?;
+
+        // Update persons
+        // # Attention, we are updating in the same transaction. This will not happen in a real scenario
+        // in order to prevent duplicate key, we will create a new audit log for the update.
+        let update_audit_log = create_test_audit_log();
+        audit_log_repo.create(&update_audit_log).await?;
+        let mut updated_persons = Vec::new();
+        for mut person in saved {
+            person.display_name = HeaplessString::try_from("Updated Person").unwrap();
+            updated_persons.push(person);
+        }
+
+        let updated = person_repo.update_batch(updated_persons, Some(update_audit_log.id)).await?;
+
+        assert_eq!(updated.len(), 3);
+        for person in updated {
+            assert_eq!(person.display_name.as_str(), "Updated Person");
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_update_batch_empty() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let person_repo = &ctx.person_repos().person_repository;
+        let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+        let updated = person_repo.update_batch(Vec::new(), Some(audit_log.id)).await?;
+
+        assert_eq!(updated.len(), 0);
+
+        Ok(())
+    }
+}
