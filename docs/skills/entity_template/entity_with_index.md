@@ -75,15 +75,24 @@ index_keys:
   uuid_keys: []  # Optional UUID-based indexes
 ```
 
-### 4. Custom Query Methods
+### 4. Custom Query Methods (Finder Methods for Secondary Index Fields)
+
+**IMPORTANT PATTERN**: For each secondary index field (field name not equal to `id`) in your `{Entity}IdxModel`, you MUST create a corresponding finder method that returns `Vec<{Entity}IdxModel>`.
+
+**Rule**: One finder method per secondary index field (excluding `id`).
+
+**Example**: If your `EntityReferenceIdxModel` has:
+- `id: Uuid` → No finder needed (primary key)
+- `person_id: Uuid` → Need `find_by_person_id.rs`
+- `reference_external_id_hash: i64` → Need `find_by_reference_external_id_hash.rs`
 
 ```yaml
 custom_queries:
-  - name: "find_ids_by_iso2_hash"
+  - name: "find_by_iso2_hash"
     parameters:
       - name: "iso2_hash"
         type: "i64"
-    return_type: "Vec<Uuid>"
+    return_type: "Vec<{Entity}IdxModel>"  # Returns full index models
     cache_based: true
 ```
 
@@ -597,33 +606,148 @@ mod tests {
     // ... tests for exist_by_ids
 }
 ```
-
 #### Custom Query Methods Pattern
 
-For cache-based lookups (e.g., `find_ids_by_iso2_hash.rs`):
+##### Finder Methods for Secondary Index Fields
+
+**CRITICAL PATTERN**: For each secondary index field (field name not equal to `id`) in the `{Entity}IdxModel`, you MUST create a corresponding finder method that returns `Vec<{Entity}IdxModel>`.
+
+**Rule**: One finder method per secondary index field (excluding `id`).
+
+**Example**: If your index model has fields:
+```rust
+pub struct EntityReferenceIdxModel {
+    pub id: Uuid,                              // Primary key - no finder needed
+    pub person_id: Uuid,                       // Secondary index - needs finder
+    pub reference_external_id_hash: i64,       // Secondary index - needs finder
+}
+```
+
+Then you need to create:
+- `find_by_person_id.rs` - Returns full index models
+- `find_by_reference_external_id_hash.rs` - Returns full index models
+
+**File Location**: `business-core/business-core-postgres/src/repository/{module}/{entity}_repository/find_by_{index_field}.rs`
+
+**Implementation Pattern** (for i64 index):
 
 ```rust
 use std::error::Error;
-use uuid::Uuid;
+use business_core_db::models::{module}::{entity}::{Entity}IdxModel;
 
 use super::repo_impl::{Entity}RepositoryImpl;
 
 impl {Entity}RepositoryImpl {
-    pub async fn find_ids_by_{index_name}(
+    pub async fn find_by_{index_field}(
         &self,
-        {index_name}: i64,
-    ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
+        {index_field}: i64,
+    ) -> Result<Vec<{Entity}IdxModel>, Box<dyn Error + Send + Sync>> {
         let cache = self.{entity}_idx_cache.read().await;
-        let items = cache.get_by_i64_index("{index_name}", &{index_name});
-        let result = items.into_iter().map(|item| item.id).collect();
-        Ok(result)
+        let items = cache.get_by_i64_index("{index_field}", &{index_field});
+        Ok(items)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    // ... tests for custom query method
+    use crate::test_helper::setup_test_context;
+    use business_core_db::repository::create_batch::CreateBatch;
+    use business_core_db::utils::hash_as_i64;
+    use crate::repository::{module}::test_utils::{create_test_{entity}, /* parent entities */};
+
+    #[tokio::test]
+    async fn test_find_by_{index_field}() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+        let {entity}_repo = &ctx.{module}_repos().{entity}_repository;
+
+        // Create audit log and prerequisite entities if needed
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+
+        // Create test entities with same index value
+        let test_value = "test-value";
+        let expected_hash = hash_as_i64(&test_value).unwrap();
+        
+        let mut entities = Vec::new();
+        for i in 0..3 {
+            entities.push(create_test_{entity}(test_value));
+        }
+
+        let saved = {entity}_repo.create_batch(entities, Some(audit_log.id)).await?;
+
+        // Find by index field
+        let found = {entity}_repo.find_by_{index_field}(expected_hash).await?;
+        
+        assert_eq!(found.len(), 3);
+        for saved_entity in &saved {
+            assert!(found.iter().any(|idx| idx.id == saved_entity.id));
+            assert!(found.iter().all(|idx| idx.{index_field} == expected_hash));
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_find_by_{index_field}_non_existing() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let ctx = setup_test_context().await?;
+        let {entity}_repo = &ctx.{module}_repos().{entity}_repository;
+
+        let non_existent_hash = hash_as_i64(&"non-existent").unwrap();
+        let found = {entity}_repo.find_by_{index_field}(non_existent_hash).await?;
+        
+        assert!(found.is_empty());
+
+        Ok(())
+    }
 }
+```
+
+**Implementation Pattern** (for UUID index):
+
+```rust
+use std::error::Error;
+use uuid::Uuid;
+use business_core_db::models::{module}::{entity}::{Entity}IdxModel;
+
+use super::repo_impl::{Entity}RepositoryImpl;
+
+impl {Entity}RepositoryImpl {
+    pub async fn find_by_{index_field}(
+        &self,
+        {index_field}: Uuid,
+    ) -> Result<Vec<{Entity}IdxModel>, Box<dyn Error + Send + Sync>> {
+        let cache = self.{entity}_idx_cache.read().await;
+        let items = cache.get_by_uuid_index("{index_field}", &{index_field});
+        Ok(items)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Similar test pattern as above, but using Uuid instead of hash
+}
+```
+
+**Module Registration**: Don't forget to export the finder in `mod.rs`:
+
+```rust
+pub mod find_by_{index_field};
+pub use find_by_{index_field}::find_by_{index_field};
+```
+
+**Key Points**:
+- **REQUIRED**: One finder method per secondary index field (excluding `id`)
+- **File naming**: `find_by_{secondary_index_field_name}.rs`
+- **Return type**: `Vec<{Entity}IdxModel>` (full index models, not just IDs)
+- **Implementation**: Uses cache's `get_by_i64_index()` or `get_by_uuid_index()`
+- **Testing**: Comprehensive tests for happy path, empty results, and edge cases
+- All tests should create proper audit logs and prerequisite entities
+
+**Example Mapping**:
+- Index field `person_id` → File `find_by_person_id.rs`
+- Index field `reference_external_id_hash` → File `find_by_reference_external_id_hash.rs`
+- Index field `code_hash` → File `find_by_code_hash.rs`
 ```
 
 ---

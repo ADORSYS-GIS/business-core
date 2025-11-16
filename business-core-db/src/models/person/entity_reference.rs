@@ -29,25 +29,15 @@ pub enum RelationshipRole {
 /// # Documentation
 /// - Entity reference table for managing person-to-entity relationships
 ///
-/// # Index
-/// - person_id: UUID (direct UUID index)
-/// - reference_external_id_hash: i64 (hash of reference_external_id field)
-///
-/// # Audit
-/// - Auditable entity with full audit trail
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct EntityReferenceModel {
-    /// # Finder Methods (use index)
-    /// - find_by_id
-    /// - find_by_ids
-    /// - exists_by_id
+
     pub id: Uuid,
 
     /// # Documentation
     /// - References PersonModel.id
     ///
     /// # Finder Method (use index)
-    /// - find_ids_by_person_id
     /// - find_by_person_id
     pub person_id: Uuid,
 
