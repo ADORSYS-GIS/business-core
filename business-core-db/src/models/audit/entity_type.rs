@@ -5,12 +5,14 @@ use sqlx::Type;
 #[sqlx(type_name = "entity_type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum EntityType {
     Location,
+    Person,
 }
 
 impl From<EntityType> for &str {
     fn from(val: EntityType) -> Self {
         match val {
             EntityType::Location => "LOCATION",
+            EntityType::Person => "PERSON",
         }
     }
 }

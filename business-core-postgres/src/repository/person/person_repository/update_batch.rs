@@ -1,0 +1,184 @@
+use async_trait::async_trait;
+use business_core_db::models::{
+    audit::{AuditLinkModel, EntityType},
+    person::person::PersonModel,
+};
+use business_core_db::models::index_aware::IndexAware;
+use business_core_db::repository::update_batch::UpdateBatch;
+use sqlx::Postgres;
+use std::error::Error;
+use uuid::Uuid;
+use business_core_db::utils::hash_as_i64;
+
+use super::repo_impl::PersonRepositoryImpl;
+
+impl PersonRepositoryImpl {
+    pub(super) async fn update_batch_impl(
+        &self,
+        items: Vec<PersonModel>,
+        audit_log_id: Option<Uuid>,
+    ) -> Result<Vec<PersonModel>, Box<dyn Error + Send + Sync>> {
+        let audit_log_id = audit_log_id.ok_or("audit_log_id is required for PersonModel")?;
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut updated_items = Vec::new();
+        let mut indices_to_update = Vec::new();
+        
+        {
+            let mut tx = self.executor.tx.lock().await;
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            
+            for mut item in items {
+                let previous_hash = item.hash;
+                let previous_audit_log_id = item.audit_log_id.ok_or("Entity must have audit_log_id for update")?;
+
+                let mut entity_for_hashing = item.clone();
+                entity_for_hashing.hash = 0;
+                let computed_hash = hash_as_i64(&entity_for_hashing)?;
+
+                if computed_hash == previous_hash {
+                    updated_items.push(item);
+                    continue;
+                }
+
+                item.antecedent_hash = previous_hash;
+                item.antecedent_audit_log_id = previous_audit_log_id;
+                item.audit_log_id = Some(audit_log_id);
+                item.hash = 0;
+
+                let new_computed_hash = hash_as_i64(&item)?;
+                item.hash = new_computed_hash;
+
+                sqlx::query(
+                    r#"
+                    INSERT INTO person_audit
+                    (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                    "#,
+                )
+                .bind(item.id)
+                .bind(item.person_type)
+                .bind(item.display_name.as_str())
+                .bind(item.external_identifier.as_deref())
+                .bind(item.entity_reference_count)
+                .bind(item.organization_person_id)
+                .bind(item.messaging_info1.as_deref())
+                .bind(item.messaging_info2.as_deref())
+                .bind(item.messaging_info3.as_deref())
+                .bind(item.messaging_info4.as_deref())
+                .bind(item.messaging_info5.as_deref())
+                .bind(item.department.as_deref())
+                .bind(item.location_id)
+                .bind(item.duplicate_of_person_id)
+                .bind(item.antecedent_hash)
+                .bind(item.antecedent_audit_log_id)
+                .bind(item.hash)
+                .bind(item.audit_log_id)
+                .execute(&mut **transaction)
+                .await?;
+
+                let rows_affected = sqlx::query(
+                    r#"
+                    UPDATE person SET
+                    person_type = $2, display_name = $3, external_identifier = $4,
+                    entity_reference_count = $5, organization_person_id = $6,
+                    messaging_info1 = $7, messaging_info2 = $8, messaging_info3 = $9,
+                    messaging_info4 = $10, messaging_info5 = $11, department = $12,
+                    location_id = $13, duplicate_of_person_id = $14,
+                    antecedent_hash = $15, antecedent_audit_log_id = $16,
+                    hash = $17, audit_log_id = $18
+                    WHERE id = $1 AND hash = $19 AND audit_log_id = $20
+                    "#,
+                )
+                .bind(item.id)
+                .bind(item.person_type)
+                .bind(item.display_name.as_str())
+                .bind(item.external_identifier.as_deref())
+                .bind(item.entity_reference_count)
+                .bind(item.organization_person_id)
+                .bind(item.messaging_info1.as_deref())
+                .bind(item.messaging_info2.as_deref())
+                .bind(item.messaging_info3.as_deref())
+                .bind(item.messaging_info4.as_deref())
+                .bind(item.messaging_info5.as_deref())
+                .bind(item.department.as_deref())
+                .bind(item.location_id)
+                .bind(item.duplicate_of_person_id)
+                .bind(item.antecedent_hash)
+                .bind(item.antecedent_audit_log_id)
+                .bind(item.hash)
+                .bind(item.audit_log_id)
+                .bind(previous_hash)
+                .bind(previous_audit_log_id)
+                .execute(&mut **transaction)
+                .await?
+                .rows_affected();
+
+                if rows_affected == 0 {
+                    return Err("Concurrent update detected".into());
+                }
+
+                let idx = item.to_index();
+                sqlx::query(
+                    r#"
+                    UPDATE person_idx SET 
+                    external_identifier_hash = $2,
+                    organization_person_id = $3,
+                    duplicate_of_person_id = $4
+                    WHERE id = $1
+                    "#,
+                )
+                .bind(idx.id)
+                .bind(idx.external_identifier_hash)
+                .bind(idx.organization_person_id)
+                .bind(idx.duplicate_of_person_id)
+                .execute(&mut **transaction)
+                .await?;
+
+                // Create audit link
+                let audit_link = AuditLinkModel {
+                    audit_log_id,
+                    entity_id: item.id,
+                    entity_type: EntityType::Person,
+                };
+                sqlx::query(
+                    r#"
+                    INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
+                    VALUES ($1, $2, $3)
+                    "#,
+                )
+                .bind(audit_link.audit_log_id)
+                .bind(audit_link.entity_id)
+                .bind(audit_link.entity_type)
+                .execute(&mut **transaction)
+                .await?;
+
+                indices_to_update.push((item.id, idx));
+                updated_items.push(item);
+            }
+        }
+        
+        {
+            let cache = self.person_idx_cache.read().await;
+            for (id, idx) in indices_to_update {
+                cache.remove(&id);
+                cache.add(idx);
+            }
+        }
+
+        Ok(updated_items)
+    }
+}
+
+#[async_trait]
+impl UpdateBatch<Postgres, PersonModel> for PersonRepositoryImpl {
+    async fn update_batch(
+        &self,
+        items: Vec<PersonModel>,
+        audit_log_id: Option<Uuid>,
+    ) -> Result<Vec<PersonModel>, Box<dyn Error + Send + Sync>> {
+        Self::update_batch_impl(self, items, audit_log_id).await
+    }
+}

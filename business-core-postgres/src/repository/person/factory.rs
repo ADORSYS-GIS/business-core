@@ -7,8 +7,9 @@ use business_core_db::models::person::{
     country_subdivision::CountrySubdivisionIdxModel,
     locality::LocalityIdxModel,
     location::LocationIdxModel,
+    person::PersonIdxModel,
 };
-use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl};
+use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl};
 
 /// Factory for creating person module repositories
 ///
@@ -20,6 +21,7 @@ pub struct PersonRepoFactory {
     country_subdivision_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<CountrySubdivisionIdxModel>>>,
     locality_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<LocalityIdxModel>>>,
     location_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<LocationIdxModel>>>,
+    person_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<PersonIdxModel>>>,
 }
 
 impl PersonRepoFactory {
@@ -40,6 +42,10 @@ impl PersonRepoFactory {
         ));
 
         let location_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+
+        let person_idx_cache = Arc::new(ParkingRwLock::new(
             business_core_db::IdxModelCache::new(vec![]).unwrap()
         ));
         
@@ -68,6 +74,12 @@ impl PersonRepoFactory {
                 location_idx_cache.clone(),
             ));
             listener.register_handler(location_handler);
+
+            let person_handler = Arc::new(IndexCacheHandler::new(
+                "person_idx".to_string(),
+                person_idx_cache.clone(),
+            ));
+            listener.register_handler(person_handler);
         }
         
         Arc::new(Self {
@@ -75,6 +87,7 @@ impl PersonRepoFactory {
             country_subdivision_idx_cache,
             locality_idx_cache,
             location_idx_cache,
+            person_idx_cache,
         })
     }
 
@@ -118,6 +131,16 @@ impl PersonRepoFactory {
         repo
     }
 
+    /// Build a PersonRepository with the given executor
+    pub fn build_person_repo(&self, session: &impl UnitOfWorkSession) -> Arc<PersonRepositoryImpl> {
+        let repo = Arc::new(PersonRepositoryImpl::new(
+            session.executor().clone(),
+            self.person_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all person repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> PersonRepositories {
         PersonRepositories {
@@ -125,6 +148,7 @@ impl PersonRepoFactory {
             country_subdivision_repository: self.build_country_subdivision_repo(session),
             locality_repository: self.build_locality_repo(session),
             location_repository: self.build_location_repo(session),
+            person_repository: self.build_person_repo(session),
         }
     }
 }
@@ -135,4 +159,5 @@ pub struct PersonRepositories {
     pub country_subdivision_repository: Arc<CountrySubdivisionRepositoryImpl>,
     pub locality_repository: Arc<LocalityRepositoryImpl>,
     pub location_repository: Arc<LocationRepositoryImpl>,
+    pub person_repository: Arc<PersonRepositoryImpl>,
 }

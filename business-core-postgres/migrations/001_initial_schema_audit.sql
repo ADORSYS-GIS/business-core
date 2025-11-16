@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_updated_at ON audit_log(updated_at);
 CREATE INDEX IF NOT EXISTS idx_audit_log_updated_by_person_id ON audit_log(updated_by_person_id);
 
 -- Entity Type Enum
-CREATE TYPE entity_type AS ENUM ('LOCATION');
+CREATE TYPE entity_type AS ENUM ('LOCATION', 'PERSON');
 
 -- Audit Link Table
 CREATE TABLE IF NOT EXISTS audit_link (
