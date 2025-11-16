@@ -29,14 +29,14 @@ pub trait UpdateBatch<DB: Database, T: Identifiable>: Send + Sync {
     /// 
     /// # Arguments
     /// * `items` - A vector of entities to update
-    /// * `audit_log_id` - The UUID of the audit log for tracking this operation
-    /// 
+    /// * `audit_log_id` - The optional UUID of the audit log for tracking this operation
+    ///
     /// # Returns
     /// * `Ok(Vec<T>)` - A vector of updated entities
     /// * `Err` - An error if the transaction could not be executed
     async fn update_batch(
         &self,
         items: Vec<T>,
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<Vec<T>, Box<dyn std::error::Error + Send + Sync>>;
 }

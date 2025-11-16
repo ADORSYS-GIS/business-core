@@ -25,14 +25,14 @@ pub trait DeleteBatch<DB: Database>: Send + Sync {
     /// 
     /// # Arguments
     /// * `ids` - A slice of UUIDs of the entities to delete
-    /// * `audit_log_id` - The UUID of the audit log for tracking this operation
-    /// 
+    /// * `audit_log_id` - The optional UUID of the audit log for tracking this operation
+    ///
     /// # Returns
     /// * `Ok(usize)` - The number of items successfully deleted
     /// * `Err` - An error if the transaction could not be executed
     async fn delete_batch(
         &self,
         ids: &[Uuid],
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>>;
 }

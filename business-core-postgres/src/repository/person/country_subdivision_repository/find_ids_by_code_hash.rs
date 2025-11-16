@@ -21,7 +21,6 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::utils::hash_as_i64;
     use heapless::String as HeaplessString;
-    use uuid::Uuid;
     use super::super::test_utils::test_utils::{create_test_country, create_test_country_subdivision};
 
     #[tokio::test]
@@ -33,8 +32,7 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("FR", "France");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         let mut subdivision = create_test_country_subdivision(
             country_id,
@@ -44,10 +42,9 @@ mod tests {
         let unique_code = "TC1";
         subdivision.code = HeaplessString::try_from(unique_code).unwrap();
         
-        let audit_log_id = Uuid::new_v4();
-        let saved = country_subdivision_repo.create_batch(vec![subdivision.clone()], audit_log_id).await?;
+        let saved = country_subdivision_repo.create_batch(vec![subdivision.clone()], None).await?;
 
-        let unique_code_hash = hash_as_i64(&unique_code);
+        let unique_code_hash = hash_as_i64(&unique_code)?;
         let found_ids = country_subdivision_repo.find_ids_by_code_hash(unique_code_hash).await?;
         
         assert_eq!(found_ids.len(), 1);
@@ -62,7 +59,7 @@ mod tests {
         let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
 
         let non_existent_code = "NONEXIST";
-        let non_existent_code_hash = hash_as_i64(&non_existent_code);
+        let non_existent_code_hash = hash_as_i64(&non_existent_code)?;
         let found_ids = country_subdivision_repo.find_ids_by_code_hash(non_existent_code_hash).await?;
         
         assert!(found_ids.is_empty());

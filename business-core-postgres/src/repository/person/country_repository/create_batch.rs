@@ -76,7 +76,7 @@ impl CreateBatch<Postgres, CountryModel> for CountryRepositoryImpl {
     async fn create_batch(
         &self,
         items: Vec<CountryModel>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<CountryModel>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
@@ -88,7 +88,6 @@ mod tests {
     use business_core_db::models::index_aware::IndexAware;
     use business_core_db::repository::create_batch::CreateBatch;
     use tokio::time::{sleep, Duration};
-    use uuid::Uuid;
     use super::super::test_utils::test_utils::create_test_country;
 
     #[tokio::test]
@@ -105,8 +104,7 @@ mod tests {
             countries.push(country);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_countries = country_repo.create_batch(countries.clone(), audit_log_id).await?;
+        let saved_countries = country_repo.create_batch(countries.clone(), None).await?;
 
         assert_eq!(saved_countries.len(), 5);
 
@@ -122,8 +120,7 @@ mod tests {
         let ctx = setup_test_context().await?;
         let country_repo = &ctx.person_repos().country_repository;
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_countries = country_repo.create_batch(Vec::new(), audit_log_id).await?;
+        let saved_countries = country_repo.create_batch(Vec::new(), None).await?;
 
         assert_eq!(saved_countries.len(), 0);
 

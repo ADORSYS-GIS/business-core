@@ -70,8 +70,7 @@ mod tests {
             countries.push(country);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_countries = country_repo.create_batch(countries.clone(), audit_log_id).await?;
+        let saved_countries = country_repo.create_batch(countries.clone(), None).await?;
         let ids: Vec<Uuid> = saved_countries.iter().map(|c| c.id).collect();
 
         let loaded_countries = country_repo.load_batch(&ids).await?;
@@ -90,8 +89,7 @@ mod tests {
         let country_repo = &ctx.person_repos().country_repository;
 
         let country = create_test_country("L9", "Test Country");
-        let audit_log_id = Uuid::new_v4();
-        let saved = country_repo.create_batch(vec![country.clone()], audit_log_id).await?;
+        let saved = country_repo.create_batch(vec![country.clone()], None).await?;
 
         let non_existent_id = Uuid::new_v4();
         let ids = vec![saved[0].id, non_existent_id];

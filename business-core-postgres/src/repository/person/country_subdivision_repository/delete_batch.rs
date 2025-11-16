@@ -45,7 +45,7 @@ impl DeleteBatch<Postgres> for CountrySubdivisionRepositoryImpl {
     async fn delete_batch(
         &self,
         ids: &[Uuid],
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn Error + Send + Sync>> {
         Self::delete_batch_impl(self, ids).await
     }
@@ -68,8 +68,7 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("US", "United States");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         let mut subdivisions = Vec::new();
         for i in 0..3 {
@@ -81,12 +80,10 @@ mod tests {
             subdivisions.push(subdivision);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved = country_subdivision_repo.create_batch(subdivisions, audit_log_id).await?;
+        let saved = country_subdivision_repo.create_batch(subdivisions, None).await?;
 
         let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
-        let audit_log_id = Uuid::new_v4();
-        let deleted_count = country_subdivision_repo.delete_batch(&ids, audit_log_id).await?;
+        let deleted_count = country_subdivision_repo.delete_batch(&ids, None).await?;
 
         assert_eq!(deleted_count, 3);
 
@@ -102,8 +99,7 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("CA", "Canada");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         let subdivision = create_test_country_subdivision(
             country_id,
@@ -111,14 +107,12 @@ mod tests {
             "Delete Non-Existing Test",
         );
 
-        let audit_log_id = Uuid::new_v4();
-        let saved = country_subdivision_repo.create_batch(vec![subdivision], audit_log_id).await?;
+        let saved = country_subdivision_repo.create_batch(vec![subdivision], None).await?;
 
         let mut ids = vec![saved[0].id];
         ids.push(Uuid::new_v4()); // Add non-existing ID
 
-        let audit_log_id = Uuid::new_v4();
-        let deleted_count = country_subdivision_repo.delete_batch(&ids, audit_log_id).await?;
+        let deleted_count = country_subdivision_repo.delete_batch(&ids, None).await?;
 
         assert_eq!(deleted_count, 1); // Only one actually deleted
 

@@ -48,7 +48,7 @@ impl IndexAware for CountrySubdivisionModel {
     
     fn to_index(&self) -> Self::IndexType {
         // Calculate hash for code field using the centralized hash_as_i64 function
-        let code_hash = hash_as_i64(&self.code.as_str());
+        let code_hash = hash_as_i64(&self.code.as_str()).unwrap();
         
         CountrySubdivisionIdxModel {
             id: self.id,

@@ -29,14 +29,14 @@ pub trait CreateBatch<DB: Database, T: Identifiable>: Send + Sync {
     /// 
     /// # Arguments
     /// * `items` - A vector of entities to create
-    /// * `audit_log_id` - The UUID of the audit log for tracking this operation
-    /// 
+    /// * `audit_log_id` - The optional UUID of the audit log for tracking this operation
+    ///
     /// # Returns
     /// * `Ok(Vec<T>)` - A vector of created entities with generated fields populated
     /// * `Err` - An error if the transaction could not be executed
     async fn create_batch(
         &self,
         items: Vec<T>,
-        audit_log_id: Uuid,
+        audit_log_id: Option<Uuid>,
     ) -> Result<Vec<T>, Box<dyn std::error::Error + Send + Sync>>;
 }

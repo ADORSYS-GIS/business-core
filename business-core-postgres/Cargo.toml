@@ -42,6 +42,7 @@ tracing.workspace = true
 tokio-test.workspace = true
 sqlx = { workspace = true, features = ["migrate"] }
 serial_test = "3.2"
+rand = "0.8"
 
 [features]
 test-utils = ["sqlx/migrate"]

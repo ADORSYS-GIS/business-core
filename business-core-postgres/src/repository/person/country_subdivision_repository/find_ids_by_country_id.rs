@@ -31,8 +31,7 @@ mod tests {
         // First create a country (required by foreign key constraint)
         let country = create_test_country("DE", "Germany");
         let country_id = country.id;
-        let audit_log_id = Uuid::new_v4();
-        country_repo.create_batch(vec![country], audit_log_id).await?;
+        country_repo.create_batch(vec![country], None).await?;
 
         let mut subdivisions = Vec::new();
         for i in 0..3 {
@@ -44,8 +43,7 @@ mod tests {
             subdivisions.push(subdivision);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved = country_subdivision_repo.create_batch(subdivisions, audit_log_id).await?;
+        let saved = country_subdivision_repo.create_batch(subdivisions, None).await?;
 
         let found_ids = country_subdivision_repo.find_ids_by_country_id(country_id).await?;
         
