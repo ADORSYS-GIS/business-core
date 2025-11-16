@@ -1,16 +1,18 @@
 use std::error::Error;
 use uuid::Uuid;
 
+use business_core_db::models::person::locality::LocalityIdxModel;
+
 use super::repo_impl::LocalityRepositoryImpl;
 
 impl LocalityRepositoryImpl {
-    pub async fn find_ids_by_country_subdivision_id(
+    pub async fn find_by_country_subdivision_id(
         &self,
         country_subdivision_id: Uuid,
-    ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<LocalityIdxModel>, Box<dyn Error + Send + Sync>> {
         let cache = self.locality_idx_cache.read().await;
         let items = cache.get_by_uuid_index("country_subdivision_id", &country_subdivision_id);
-        let result = items.into_iter().map(|item| item.id).collect();
+        let result = items.iter().cloned().collect();
         Ok(result)
     }
 }
@@ -23,7 +25,7 @@ mod tests {
     use crate::repository::person::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
-    async fn test_find_ids_by_country_subdivision_id() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn test_find_by_country_subdivision_id() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let country_repo = &ctx.person_repos().country_repository;
         let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
@@ -51,25 +53,25 @@ mod tests {
 
         let saved = locality_repo.create_batch(localities, None).await?;
 
-        let found_ids = locality_repo.find_ids_by_country_subdivision_id(subdivision_id).await?;
+        let found_localities = locality_repo.find_by_country_subdivision_id(subdivision_id).await?;
         
-        assert_eq!(found_ids.len(), 3);
+        assert_eq!(found_localities.len(), 3);
         for saved_locality in &saved {
-            assert!(found_ids.contains(&saved_locality.id));
+            assert!(found_localities.iter().any(|l| l.id == saved_locality.id));
         }
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_find_ids_by_country_subdivision_id_non_existing() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn test_find_by_country_subdivision_id_non_existing() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let locality_repo = &ctx.person_repos().locality_repository;
 
         let non_existent_subdivision_id = Uuid::new_v4();
-        let found_ids = locality_repo.find_ids_by_country_subdivision_id(non_existent_subdivision_id).await?;
+        let found_localities = locality_repo.find_by_country_subdivision_id(non_existent_subdivision_id).await?;
         
-        assert!(found_ids.is_empty());
+        assert!(found_localities.is_empty());
 
         Ok(())
     }

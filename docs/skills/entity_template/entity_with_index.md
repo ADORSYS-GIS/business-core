@@ -1524,8 +1524,8 @@ Index Keys:
 - country_subdivision_id: Uuid (direct UUID index)
 
 Custom Query Methods:
-- find_ids_by_code_hash(code_hash: i64) -> Vec<Uuid>
-- find_ids_by_country_subdivision_id(country_subdivision_id: Uuid) -> Vec<Uuid>
+- find_by_code_hash(code_hash: i64) -> Vec<LocalityIdxModel>
+- find_by_country_subdivision_id(country_subdivision_id: Uuid) -> Vec<LocalityIdxModel>
 
 Database Files:
 - Migration: migrations/004_initial_schema_person_locality.sql
@@ -1668,8 +1668,9 @@ pub async fn find_by_field1_and_field2(
 
 **DO implement in repository:**
 ```rust
-// Simple cache-based ID lookups
-pub async fn find_ids_by_{index}(&self, value: T) -> Result<Vec<Uuid>, Error>
+// Simple cache-based lookups that return index models.
+// A finder method should exist for each secondary index field.
+pub async fn find_by_{index}(&self, value: T) -> Result<Vec<{Entity}IdxModel>, Error>
 
 // Batch loading by IDs
 pub async fn load_batch(&self, ids: &[Uuid]) -> Result<Vec<Option<Model>>, Error>
@@ -1678,8 +1679,9 @@ pub async fn load_batch(&self, ids: &[Uuid]) -> Result<Vec<Option<Model>>, Error
 **DON'T implement in repository:**
 ```rust
 // Composite operations combining multiple repository methods
-pub async fn find_by_{index}(&self, value: T) -> Result<Vec<Model>, Error> {
-    let ids = self.find_ids_by_{index}(value).await?;
+pub async fn load_by_{index}(&self, value: T) -> Result<Vec<Model>, Error> {
+    let index_models = self.find_by_{index}(value).await?;
+    let ids: Vec<Uuid> = index_models.iter().map(|idx| idx.id).collect();
     let results = self.load_batch(&ids).await?;
     Ok(results.into_iter().flatten().collect())
 }
@@ -1688,7 +1690,8 @@ pub async fn find_by_{index}(&self, value: T) -> Result<Vec<Model>, Error> {
 **Instead, compose at service/application layer:**
 ```rust
 // In your service or application code
-let ids = repo.find_ids_by_country_id(country_id).await?;
+let index_models = repo.find_by_country_id(country_id).await?;
+let ids: Vec<Uuid> = index_models.iter().map(|idx| idx.id).collect();
 let subdivisions = repo.load_batch(&ids).await?;
 let valid_subdivisions: Vec<_> = subdivisions.into_iter().flatten().collect();
 ```

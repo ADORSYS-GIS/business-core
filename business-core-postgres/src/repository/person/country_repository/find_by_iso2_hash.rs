@@ -1,17 +1,17 @@
 use std::error::Error;
-use uuid::Uuid;
+
+use business_core_db::models::person::country::CountryIdxModel;
 
 use super::repo_impl::CountryRepositoryImpl;
 
 impl CountryRepositoryImpl {
-    pub async fn find_ids_by_iso2_hash(
+    pub async fn find_by_iso2_hash(
         &self,
         iso2_hash: i64,
-    ) -> Result<Vec<Uuid>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<CountryIdxModel>, Box<dyn Error + Send + Sync>> {
         let cache = self.country_idx_cache.read().await;
         let items = cache.get_by_i64_index("iso2_hash", &iso2_hash);
-        let result = items.into_iter().map(|item| item.id).collect();
-        Ok(result)
+        Ok(items)
     }
 }
 
@@ -24,7 +24,7 @@ mod tests {
     use super::super::test_utils::test_utils::create_test_country;
 
     #[tokio::test]
-    async fn test_find_ids_by_iso2_hash() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn test_find_by_iso2_hash() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let country_repo = &ctx.person_repos().country_repository;
 
@@ -35,15 +35,15 @@ mod tests {
         let saved = country_repo.create_batch(vec![country_model.clone()], None).await?;
 
         let unique_iso2_hash = hash_as_i64(&unique_iso2)?;
-        let found_ids = country_repo.find_ids_by_iso2_hash(unique_iso2_hash).await?;
+        let found_items = country_repo.find_by_iso2_hash(unique_iso2_hash).await?;
         
-        assert_eq!(found_ids.len(), 1);
-        assert_eq!(found_ids[0], saved[0].id);
+        assert_eq!(found_items.len(), 1);
+        assert_eq!(found_items[0].id, saved[0].id);
 
         let non_existent_iso2 = "T4";
         let non_existent_iso2_hash = hash_as_i64(&non_existent_iso2)?;
-        let found_ids = country_repo.find_ids_by_iso2_hash(non_existent_iso2_hash).await?;
-        assert!(found_ids.is_empty());
+        let found_items = country_repo.find_by_iso2_hash(non_existent_iso2_hash).await?;
+        assert!(found_items.is_empty());
 
         Ok(())
     }
