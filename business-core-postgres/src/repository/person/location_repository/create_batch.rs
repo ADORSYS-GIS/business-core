@@ -157,10 +157,10 @@ impl CreateBatch<Postgres, LocationModel> for LocationRepositoryImpl {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_utils::{
-        create_test_audit_log, create_test_country, create_test_country_subdivision,
-        create_test_locality, create_test_location,
-    };
+    use crate::repository::person::test_utils::{
+            create_test_audit_log, create_test_country, create_test_country_subdivision,
+            create_test_locality, create_test_location,
+        };
     use crate::test_helper::{random, setup_test_context, setup_test_context_and_listen};
     use business_core_db::{
         models::{index_aware::IndexAware, person::location::LocationModel},

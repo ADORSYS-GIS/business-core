@@ -45,20 +45,11 @@ pub async fn load_batch_impl(
 #[cfg(test)]
 mod tests {
     use crate::test_helper::setup_test_context;
-    use business_core_db::models::audit::AuditLogModel;
-    use business_core_db::repository::load_batch::LoadBatch;
-    use chrono::Utc;
-    use uuid::Uuid;
-
-    fn new_test_audit_log() -> AuditLogModel {
-        AuditLogModel {
-            id: Uuid::new_v4(),
-            updated_at: Utc::now(),
-            updated_by_person_id: Uuid::new_v4(),
-        }
-    }
-
-    #[tokio::test]
+    use crate::repository::person::test_utils::create_test_audit_log;
+        use business_core_db::repository::load_batch::LoadBatch;
+        use uuid::Uuid;
+    
+        #[tokio::test]
     async fn test_load_batch_empty_ids() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
@@ -75,7 +66,7 @@ mod tests {
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
 
         // Create an audit log
-        let audit_log = new_test_audit_log();
+        let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
         // Load it via batch
@@ -110,9 +101,9 @@ mod tests {
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
 
         // Create multiple audit logs
-        let audit_log1 = new_test_audit_log();
-        let audit_log2 = new_test_audit_log();
-        let audit_log3 = new_test_audit_log();
+        let audit_log1 = create_test_audit_log();
+                let audit_log2 = create_test_audit_log();
+                let audit_log3 = create_test_audit_log();
 
         audit_log_repo.create(&audit_log1).await?;
         audit_log_repo.create(&audit_log2).await?;
@@ -141,7 +132,7 @@ mod tests {
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
 
         // Create one audit log
-        let audit_log1 = new_test_audit_log();
+        let audit_log1 = create_test_audit_log();
         audit_log_repo.create(&audit_log1).await?;
 
         // Mix existing and non-existing IDs
@@ -163,9 +154,9 @@ mod tests {
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
 
         // Create multiple audit logs
-        let audit_log1 = new_test_audit_log();
-        let audit_log2 = new_test_audit_log();
-        let audit_log3 = new_test_audit_log();
+        let audit_log1 = create_test_audit_log();
+                let audit_log2 = create_test_audit_log();
+                let audit_log3 = create_test_audit_log();
 
         audit_log_repo.create(&audit_log1).await?;
         audit_log_repo.create(&audit_log2).await?;
@@ -190,7 +181,7 @@ mod tests {
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
 
         // Create an audit log
-        let audit_log = new_test_audit_log();
+        let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
         // Request the same ID multiple times

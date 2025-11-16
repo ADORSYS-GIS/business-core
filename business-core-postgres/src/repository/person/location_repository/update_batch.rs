@@ -174,7 +174,7 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::update_batch::UpdateBatch;
     use heapless::String as HeaplessString;
-    use super::super::test_utils::{create_test_audit_log, create_test_country, create_test_country_subdivision, create_test_locality, create_test_location};
+    use crate::repository::person::test_utils::{create_test_audit_log, create_test_country, create_test_country_subdivision, create_test_locality, create_test_location};
 
     #[tokio::test]
     async fn test_update_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

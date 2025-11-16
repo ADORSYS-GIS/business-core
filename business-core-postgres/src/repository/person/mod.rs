@@ -9,3 +9,6 @@ pub use locality_repository::LocalityRepositoryImpl;
 pub use factory::{PersonRepoFactory, PersonRepositories};
 pub mod location_repository;
 pub use location_repository::LocationRepositoryImpl;
+
+#[cfg(test)]
+pub mod test_utils;

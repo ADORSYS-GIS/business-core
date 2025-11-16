@@ -166,21 +166,6 @@ let idx_insert_query = sqlx::query(
 // ... bind index fields
 ;
 
-// Execute in transaction (audit first!)
-match &repo.executor {
-    Executor::Pool(pool) => {
-        audit_insert_query.execute(&**pool).await?;
-        entity_insert_query.execute(&**pool).await?;
-        idx_insert_query.execute(&**pool).await?;
-    }
-    Executor::Tx(tx) => {
-        let mut tx = tx.lock().await;
-        audit_insert_query.execute(&mut **tx).await?;
-        entity_insert_query.execute(&mut **tx).await?;
-        idx_insert_query.execute(&mut **tx).await?;
-    }
-}
-
 // Create audit link to track the entity modification in the transaction
 let audit_link = AuditLinkModel {
     audit_log_id,
@@ -197,23 +182,13 @@ let audit_link_query = sqlx::query(
 .bind(audit_link.entity_id)
 .bind(audit_link.entity_type);
 
-
- // Execute in transaction (audit first!)
- match &repo.executor {
-     Executor::Pool(pool) => {
-         audit_insert_query.execute(&**pool).await?;
-         entity_insert_query.execute(&**pool).await?;
-         idx_insert_query.execute(&**pool).await?;
-         audit_link_query.execute(&**pool).await?;
-     }
-     Executor::Tx(tx) => {
-         let mut tx = tx.lock().await;
-         audit_insert_query.execute(&mut **tx).await?;
-         entity_insert_query.execute(&mut **tx).await?;
-         idx_insert_query.execute(&mut **tx).await?;
-         audit_link_query.execute(&mut **tx).await?;
-     }
- }
+// Execute in transaction (audit first!)
+let mut tx = repo.executor.tx.lock().await;
+let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+audit_insert_query.execute(&mut **transaction).await?;
+entity_insert_query.execute(&mut **transaction).await?;
+idx_insert_query.execute(&mut **transaction).await?;
+audit_link_query.execute(&mut **transaction).await?;
 
 // Update cache (same as base template)
 let new_idx = {Entity}IdxModel {
@@ -302,19 +277,6 @@ let entity_update_query = sqlx::query(
 .bind(entity.antecedent_hash)
 .bind(entity.antecedent_audit_log_id);
 
-// Execute in transaction (audit first!)
-match &repo.executor {
-    Executor::Pool(pool) => {
-        audit_insert_query.execute(&**pool).await?;
-        entity_update_query.execute(&**pool).await?;
-    }
-    Executor::Tx(tx) => {
-        let mut tx = tx.lock().await;
-        audit_insert_query.execute(&mut **tx).await?;
-        entity_update_query.execute(&mut **tx).await?;
-    }
-}
-
 // Create audit link
 let audit_link = AuditLinkModel {
     audit_log_id,
@@ -332,19 +294,11 @@ let audit_link_query = sqlx::query(
 .bind(audit_link.entity_type);
 
 // Execute in transaction (audit first!)
-match &repo.executor {
-    Executor::Pool(pool) => {
-        audit_insert_query.execute(&**pool).await?;
-        entity_update_query.execute(&**pool).await?;
-        audit_link_query.execute(&**pool).await?;
-    }
-    Executor::Tx(tx) => {
-        let mut tx = tx.lock().await;
-        audit_insert_query.execute(&mut **tx).await?;
-        entity_update_query.execute(&mut **tx).await?;
-        audit_link_query.execute(&mut **tx).await?;
-    }
-}
+let mut tx = repo.executor.tx.lock().await;
+let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+audit_insert_query.execute(&mut **transaction).await?;
+entity_update_query.execute(&mut **transaction).await?;
+audit_link_query.execute(&mut **transaction).await?;
 
 // Update cache (remove old, add new)
 let new_idx = {Entity}IdxModel {
@@ -408,20 +362,6 @@ for entity in &entities_to_delete {
     )
     .bind(entity.id);
 
-    // 5. Execute in transaction (audit first!)
-    match &repo.executor {
-        Executor::Pool(_pool) => {
-            // In a real scenario, this would be part of a larger transaction
-            // managed by a Unit of Work.
-            panic!("Delete should be executed within a transaction");
-        }
-        Executor::Tx(tx) => {
-            let mut tx = tx.lock().await;
-            audit_insert_query.execute(&mut **tx).await?;
-            entity_delete_query.execute(&mut **tx).await?;
-        }
-    }
-    
     // Create audit link for the deleted entity
     let audit_link = AuditLinkModel {
         audit_log_id,
@@ -437,22 +377,13 @@ for entity in &entities_to_delete {
     .bind(audit_link.audit_log_id)
     .bind(audit_link.entity_id)
     .bind(audit_link.entity_type);
-    
-    
+
     // 5. Execute in transaction (audit first!)
-    match &repo.executor {
-        Executor::Pool(_pool) => {
-            // In a real scenario, this would be part of a larger transaction
-            // managed by a Unit of Work.
-            panic!("Delete should be executed within a transaction");
-        }
-        Executor::Tx(tx) => {
-            let mut tx = tx.lock().await;
-            audit_insert_query.execute(&mut **tx).await?;
-            entity_delete_query.execute(&mut **tx).await?;
-            audit_link_query.execute(&mut **tx).await?;
-        }
-    }
+    let mut tx = repo.executor.tx.lock().await;
+    let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+    audit_insert_query.execute(&mut **transaction).await?;
+    entity_delete_query.execute(&mut **transaction).await?;
+    audit_link_query.execute(&mut **transaction).await?;
 
     // 6. Remove the entity from the cache
     repo.{entity}_idx_cache.read().await.remove(&entity.id);
@@ -496,6 +427,13 @@ CREATE TABLE IF NOT EXISTS {table_name}_idx (
     index_field2 UUID,
     -- ... other index fields
 );
+
+-- Create trigger for {table_name}_idx table to notify listeners of changes
+DROP TRIGGER IF EXISTS {table_name}_idx_notify ON {table_name}_idx;
+CREATE TRIGGER {table_name}_idx_notify
+    AFTER INSERT OR UPDATE OR DELETE ON {table_name}_idx
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_cache_change();
 
 -- {Entity} Audit Table
 -- Stores a complete, immutable snapshot of the entity at each change.
