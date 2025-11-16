@@ -12,7 +12,7 @@ impl LocalityRepositoryImpl {
     ) -> Result<Vec<LocalityIdxModel>, Box<dyn Error + Send + Sync>> {
         let cache = self.locality_idx_cache.read().await;
         let items = cache.get_by_uuid_index("country_subdivision_id", &country_subdivision_id);
-        let result = items.iter().cloned().collect();
+        let result = items.to_vec();
         Ok(result)
     }
 }

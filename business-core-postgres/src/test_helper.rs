@@ -11,7 +11,7 @@ use postgres_index_cache::CacheNotificationListener;
 use postgres_unit_of_work::{PostgresUnitOfWork, UnitOfWork};
 use tokio::sync::OnceCell;
 
-use crate::repository::{audit::AuditRepositories, person::PersonRepositories};
+use crate::repository::{audit::AuditRepositories, person::PersonRepositories, reason_and_purpose::ReasonAndPurposeRepositories};
 
 // Flag to track if DB initialization has been done
 static DB_INITIALIZED: OnceCell<()> = OnceCell::const_new();
@@ -80,6 +80,7 @@ async fn get_or_init_test_pool() -> Result<Arc<PgPool>, Box<dyn std::error::Erro
 pub struct TestContext {
     pub audit_repos: AuditRepositories,
     pub person_repos: PersonRepositories,
+    pub reason_and_purpose_repos: ReasonAndPurposeRepositories,
     pub pool: Arc<PgPool>,
     listener_handle: Option<tokio::task::JoinHandle<()>>,
 }
@@ -93,6 +94,11 @@ impl TestContext {
     /// Get the person repositories from the context
     pub fn person_repos(&self) -> &PersonRepositories {
         &self.person_repos
+    }
+
+    /// Get the reason_and_purpose repositories from the context
+    pub fn reason_and_purpose_repos(&self) -> &ReasonAndPurposeRepositories {
+        &self.reason_and_purpose_repos
     }
 
     /// Get the pool from the context
@@ -139,14 +145,17 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     // Create factories with listener for cache synchronization
     let audit_factory = crate::repository::audit::AuditRepoFactory::new();
     let person_factory = crate::repository::person::PersonRepoFactory::new(None);
+    let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(None);
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
     let person_repos = person_factory.build_all_repos(&session);
+    let reason_and_purpose_repos = reason_and_purpose_factory.build_all_repos(&session);
 
     Ok(TestContext {
         audit_repos,
         person_repos,
+        reason_and_purpose_repos,
         pool,
         listener_handle: None,
     })
@@ -173,10 +182,12 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     // Create factories with listener for cache synchronization
     let audit_factory = crate::repository::audit::AuditRepoFactory::new();
     let person_factory = crate::repository::person::PersonRepoFactory::new(Some(&mut listener));
+    let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(Some(&mut listener));
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
     let person_repos = person_factory.build_all_repos(&session);
+    let reason_and_purpose_repos = reason_and_purpose_factory.build_all_repos(&session);
     
     // Start listening to notifications in background
     let pool_clone = pool.clone();
@@ -188,6 +199,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     Ok(TestContext {
         audit_repos,
         person_repos,
+        reason_and_purpose_repos,
         pool,
         listener_handle: Some(listen_handle),
     })
