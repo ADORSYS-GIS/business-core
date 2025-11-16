@@ -6,7 +6,7 @@ use business_core_db::models::reason_and_purpose::{
     compliance_metadata::ComplianceMetadataIdxModel,
     reason::ReasonIdxModel,
 };
-use super::{ComplianceMetadataRepositoryImpl, ReasonRepositoryImpl};
+use super::{ComplianceMetadataRepositoryImpl, ReasonRepositoryImpl, ReasonReferenceRepositoryImpl};
 
 /// Factory for creating reason_and_purpose module repositories
 ///
@@ -72,11 +72,21 @@ impl ReasonAndPurposeRepoFactory {
         repo
     }
 
+    /// Build a ReasonReferenceRepository with the given executor
+    pub fn build_reason_reference_repo(&self, session: &impl UnitOfWorkSession) -> Arc<ReasonReferenceRepositoryImpl> {
+        let repo = Arc::new(ReasonReferenceRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all reason_and_purpose repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> ReasonAndPurposeRepositories {
         ReasonAndPurposeRepositories {
             compliance_metadata_repository: self.build_compliance_metadata_repo(session),
             reason_repository: self.build_reason_repo(session),
+            reason_reference_repository: self.build_reason_reference_repo(session),
         }
     }
 }
@@ -85,4 +95,5 @@ impl ReasonAndPurposeRepoFactory {
 pub struct ReasonAndPurposeRepositories {
     pub compliance_metadata_repository: Arc<ComplianceMetadataRepositoryImpl>,
     pub reason_repository: Arc<ReasonRepositoryImpl>,
+    pub reason_reference_repository: Arc<ReasonReferenceRepositoryImpl>,
 }
