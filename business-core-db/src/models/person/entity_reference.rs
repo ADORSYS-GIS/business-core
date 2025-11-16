@@ -4,6 +4,9 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use std::collections::HashMap;
 use crate::{HasPrimaryKey, IdxModelCache, Indexable};
+use crate::models::auditable::Auditable;
+use crate::models::identifiable::Identifiable;
+use crate::models::{Index, IndexAware};
 
 /// Database model for person entity type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
@@ -25,10 +28,13 @@ pub enum RelationshipRole {
 
 /// # Documentation
 /// - Entity reference table for managing person-to-entity relationships
-/// 
+///
 /// # Index
-/// 
+/// - person_id: UUID (direct UUID index)
+/// - reference_external_id_hash: i64 (hash of reference_external_id field)
+///
 /// # Audit
+/// - Auditable entity with full audit trail
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct EntityReferenceModel {
     /// # Finder Methods (use index)
@@ -39,7 +45,7 @@ pub struct EntityReferenceModel {
 
     /// # Documentation
     /// - References PersonModel.id
-    /// 
+    ///
     /// # Finder Method (use index)
     /// - find_ids_by_person_id
     /// - find_by_person_id
@@ -52,7 +58,7 @@ pub struct EntityReferenceModel {
 
     /// # Documentation
     /// - External identifier for the reference (e.g., customer ID, employee ID)
-    /// 
+    ///
     /// # Finder Method (use index)
     /// - find_by_reference_external_id_hash
     pub reference_external_id: HeaplessString<50>,
@@ -61,7 +67,35 @@ pub struct EntityReferenceModel {
     pub reference_details_l2: Option<HeaplessString<50>>,
     pub reference_details_l3: Option<HeaplessString<50>>,
 
-    pub last_audit_log_id: Option<Uuid>,
+    /// Hash from the previous audit record for chain verification (0 for initial create)
+    pub antecedent_hash: i64,
+    
+    /// Reference to the previous audit log entry (Uuid::nil() for initial create)
+    pub antecedent_audit_log_id: Uuid,
+    
+    /// Hash of the entity with hash field set to 0
+    /// - 0: for new entities not yet created or not yet hashed
+    /// - Non-zero: computed hash providing tamper detection
+    pub hash: i64,
+    
+    /// Reference to the current audit log entry for this entity
+    /// - None: for new entities not yet created
+    /// - Some(uuid): updated on every create/update operation to reference the latest audit log
+    ///
+    /// This field, together with `id`, forms the composite primary key in the audit table
+    pub audit_log_id: Option<Uuid>,
+}
+
+impl Identifiable for EntityReferenceModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Auditable for EntityReferenceModel {
+    fn get_audit_log_id(&self) -> Option<Uuid> {
+        self.audit_log_id
+    }
 }
 
 // Serialization functions for RelationshipRole
@@ -108,12 +142,54 @@ where
     }
 }
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct EntityReferenceIdxModel {
-
-    pub entity_reference_id: Uuid,
-
+    pub id: Uuid,
     pub person_id: Uuid,
-
     pub reference_external_id_hash: i64,
 }
+
+impl HasPrimaryKey for EntityReferenceIdxModel {
+    fn primary_key(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl IndexAware for EntityReferenceModel {
+    type IndexType = EntityReferenceIdxModel;
+    
+    fn to_index(&self) -> Self::IndexType {
+        use crate::utils::hash_as_i64;
+        let reference_external_id_hash = hash_as_i64(&self.reference_external_id.as_str()).unwrap_or(0);
+        
+        EntityReferenceIdxModel {
+            id: self.id,
+            person_id: self.person_id,
+            reference_external_id_hash,
+        }
+    }
+}
+
+impl Identifiable for EntityReferenceIdxModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Index for EntityReferenceIdxModel {}
+
+impl Indexable for EntityReferenceIdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        let mut keys = HashMap::new();
+        keys.insert("reference_external_id_hash".to_string(), Some(self.reference_external_id_hash));
+        keys
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        let mut keys = HashMap::new();
+        keys.insert("person_id".to_string(), Some(self.person_id));
+        keys
+    }
+}
+
+pub type EntityReferenceIdxModelCache = IdxModelCache<EntityReferenceIdxModel>;
