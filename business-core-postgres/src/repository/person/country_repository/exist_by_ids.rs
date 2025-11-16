@@ -43,8 +43,7 @@ mod tests {
         let country1 = create_test_country("E1", "Test Country 1");
         let country2 = create_test_country("E2", "Test Country 2");
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_countries = country_repo.create_batch(vec![country1.clone(), country2.clone()], audit_log_id).await?;
+        let saved_countries = country_repo.create_batch(vec![country1.clone(), country2.clone()], None).await?;
 
         let non_existent_id = Uuid::new_v4();
         let ids_to_check = vec![saved_countries[0].id, non_existent_id, saved_countries[1].id];

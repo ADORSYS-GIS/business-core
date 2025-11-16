@@ -44,7 +44,7 @@ impl IndexAware for CountryModel {
     
     fn to_index(&self) -> Self::IndexType {
         // Calculate hash for iso2 field using the centralized hash_as_i64 function
-        let iso2_hash = hash_as_i64(&self.iso2.as_str());
+        let iso2_hash = hash_as_i64(&self.iso2.as_str()).unwrap();
         
         CountryIdxModel {
             id: self.id,

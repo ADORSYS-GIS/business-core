@@ -107,10 +107,24 @@ use crate::utils::hash_as_i64;
 
 /// # Documentation
 /// - {Entity description}
+///
+/// ## Enum Types
+/// If your entity includes an enum, define it with `sqlx::Type`.
+///
+/// ```rust
+/// /// Database model for {enum_name} enum
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+/// #[sqlx(type_name = "{enum_name}", rename_all = "PascalCase")]
+/// pub enum {EnumName} {
+///     Variant1,
+///     Variant2,
+/// }
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct {Entity}Model {
     pub id: Uuid,
     // ... fields from specification
+    // pub enum_field: {EnumName},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -344,7 +358,7 @@ impl CreateBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
     async fn create_batch(
         &self,
         items: Vec<{Entity}Model>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
@@ -481,7 +495,7 @@ impl UpdateBatch<Postgres, {Entity}Model> for {Entity}RepositoryImpl {
     async fn update_batch(
         &self,
         items: Vec<{Entity}Model>,
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<Vec<{Entity}Model>, Box<dyn Error + Send + Sync>> {
         Self::update_batch_impl(self, items).await
     }
@@ -543,7 +557,7 @@ impl DeleteBatch<Postgres> for {Entity}RepositoryImpl {
     async fn delete_batch(
         &self,
         ids: &[Uuid],
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn Error + Send + Sync>> {
         Self::delete_batch_impl(self, ids).await
     }
@@ -843,6 +857,105 @@ For **each operation**, include tests for:
 2. **Empty batch**: Handles empty input gracefully
 3. **Non-existent entities**: Handles missing entities correctly
 4. **Cache validation**: Verifies cache is updated correctly
+5. **Cache notification**: Verifies database triggers update cache correctly (required for entities with in-memory caches)
+
+### Cache Notification Test Pattern
+
+**REQUIRED** for all entities with in-memory caches. This test verifies that database triggers correctly notify and update the cache when index records are inserted or deleted directly via SQL.
+
+```rust
+#[cfg(test)]
+mod tests {
+    use crate::test_helper::{random, setup_test_context, setup_test_context_and_listen};
+    use business_core_db::models::index_aware::IndexAware;
+    use business_core_db::repository::create_batch::CreateBatch;
+    use tokio::time::{sleep, Duration};
+    use uuid::Uuid;
+    use super::super::test_utils::test_utils::create_test_{entity};
+
+    #[tokio::test]
+    async fn test_{entity}_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        
+        // Setup test context with the notification listener
+        let ctx = setup_test_context_and_listen().await?;
+        let pool = ctx.pool();
+
+        // Create a test entity with unique identifiable fields to avoid conflicts
+        let unique_field = random(5);
+        let test_entity = create_test_{entity}(&unique_field, "Test Entity");
+        let entity_idx = test_entity.to_index();
+    
+        // Give listener time to start and establish connection
+        sleep(Duration::from_millis(2000)).await;
+    
+        // Insert the entity record directly into database
+        sqlx::query("INSERT INTO {table_name} ({field_list}) VALUES ({placeholders})")
+            // ... bind all fields
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert {entity}");
+    
+        // Insert the index record directly into database (triggers notification)
+        sqlx::query("INSERT INTO {table_name}_idx ({index_field_list}) VALUES ({index_placeholders})")
+            // ... bind index fields
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert {entity} index");
+
+        // Give time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        let entity_repo = &ctx.{module}_repos().{entity}_repository;
+
+        // Verify the cache was updated via the trigger
+        let cache = entity_repo.{entity}_idx_cache.read().await;
+        assert!(
+            cache.contains_primary(&entity_idx.id),
+            "{Entity} should be in cache after insert"
+        );
+    
+        let cached_entity = cache.get_by_primary(&entity_idx.id);
+        assert!(cached_entity.is_some(), "{Entity} should be retrievable from cache");
+        
+        // Verify the cached data matches
+        let cached_entity = cached_entity.unwrap();
+        assert_eq!(cached_entity.id, entity_idx.id);
+        // ... assert other index fields
+        
+        // Drop the read lock before proceeding
+        drop(cache);
+
+        // Delete the record from database (triggers notification)
+        sqlx::query("DELETE FROM {table_name} WHERE id = $1")
+            .bind(entity_idx.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to delete {entity}");
+
+        // Give time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        // Verify the cache entry was removed
+        let cache = entity_repo.{entity}_idx_cache.read().await;
+        assert!(
+            !cache.contains_primary(&entity_idx.id),
+            "{Entity} should be removed from cache after delete"
+        );
+        
+        Ok(())
+    }
+}
+```
+
+**Key aspects of cache notification tests:**
+
+1. **Use `setup_test_context_and_listen()`**: This sets up the PostgreSQL notification listener
+2. **Insert via raw SQL**: Direct database inserts trigger the PostgreSQL `NOTIFY` mechanism
+3. **Allow processing time**: Use `sleep()` to give the notification handler time to update the cache
+4. **Test both INSERT and DELETE**: Verify cache is updated on both operations
+5. **Generate unique test data**: Avoid conflicts with existing data or concurrent tests
+6. **Verify cache state**: Check both presence and content of cached items
+7. **Handle foreign keys**: For entities with foreign keys, insert parent records first
 
 ### Example Test Structure
 
@@ -879,9 +992,297 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn test_{entity}_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // ... cache notification test (see pattern above)
+        Ok(())
+    }
+
     // ... more tests
 }
 ```
+
+---
+
+## Repository Factory Pattern
+
+### Factory Structure
+
+**Location**: `business-core/business-core-postgres/src/repository/{module}/factory.rs`
+
+Each module requires a factory that manages repository instantiation and cache lifecycle. The factory serves as a singleton that holds all caches for the module and provides methods to build repositories with the appropriate executor.
+
+### Factory Implementation Pattern
+
+```rust
+use std::sync::Arc;
+use parking_lot::RwLock as ParkingRwLock;
+use postgres_unit_of_work::UnitOfWorkSession;
+use postgres_index_cache::{CacheNotificationListener, IndexCacheHandler};
+use business_core_db::models::{module}::{
+    {entity1}::{Entity1}IdxModel,
+    {entity2}::{Entity2}IdxModel,
+};
+use super::{Entity1}RepositoryImpl, {Entity2}RepositoryImpl};
+
+/// Factory for creating {module} module repositories
+///
+/// This factory holds all caches for the {module} module and provides
+/// methods to build repositories with the appropriate executor.
+/// This should be used as a singleton throughout the application.
+pub struct {Module}RepoFactory {
+    {entity1}_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<{Entity1}IdxModel>>>,
+    {entity2}_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<{Entity2}IdxModel>>>,
+}
+
+impl {Module}RepoFactory {
+    /// Create a new {Module}RepoFactory singleton
+    ///
+    /// Optionally register cache handlers with a notification listener
+    pub fn new(listener: Option<&mut CacheNotificationListener>) -> Arc<Self> {
+        let {entity1}_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+        
+        let {entity2}_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+        
+        // Register handlers with listener if provided
+        if let Some(listener) = listener {
+            let handler = Arc::new(IndexCacheHandler::new(
+                "{entity1}_idx".to_string(),
+                {entity1}_idx_cache.clone(),
+            ));
+            listener.register_handler(handler);
+            
+            let handler2 = Arc::new(IndexCacheHandler::new(
+                "{entity2}_idx".to_string(),
+                {entity2}_idx_cache.clone(),
+            ));
+            listener.register_handler(handler2);
+        }
+        
+        Arc::new(Self {
+            {entity1}_idx_cache,
+            {entity2}_idx_cache,
+        })
+    }
+
+    /// Build a {Entity1}Repository with the given executor
+    pub fn build_{entity1}_repo(&self, session: &impl UnitOfWorkSession) -> Arc<{Entity1}RepositoryImpl> {
+        let repo = Arc::new({Entity1}RepositoryImpl::new(
+            session.executor().clone(),
+            self.{entity1}_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build a {Entity2}Repository with the given executor
+    pub fn build_{entity2}_repo(&self, session: &impl UnitOfWorkSession) -> Arc<{Entity2}RepositoryImpl> {
+        let repo = Arc::new({Entity2}RepositoryImpl::new(
+            session.executor().clone(),
+            self.{entity2}_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build all {module} repositories with the given executor
+    pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> {Module}Repositories {
+        {Module}Repositories {
+            {entity1}_repository: self.build_{entity1}_repo(session),
+            {entity2}_repository: self.build_{entity2}_repo(session),
+        }
+    }
+}
+
+/// Container for all {module} module repositories
+pub struct {Module}Repositories {
+    pub {entity1}_repository: Arc<{Entity1}RepositoryImpl>,
+    pub {entity2}_repository: Arc<{Entity2}RepositoryImpl>,
+}
+```
+
+### Real-World Example: PersonRepoFactory
+
+```rust
+use std::sync::Arc;
+use parking_lot::RwLock as ParkingRwLock;
+use postgres_unit_of_work::UnitOfWorkSession;
+use postgres_index_cache::{CacheNotificationListener, IndexCacheHandler};
+use business_core_db::models::person::{
+    country::CountryIdxModel,
+    country_subdivision::CountrySubdivisionIdxModel,
+};
+use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl};
+
+/// Factory for creating person module repositories
+///
+/// This factory holds all caches for the person module and provides
+/// methods to build repositories with the appropriate executor.
+/// This should be used as a singleton throughout the application.
+pub struct PersonRepoFactory {
+    country_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<CountryIdxModel>>>,
+    country_subdivision_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<CountrySubdivisionIdxModel>>>,
+}
+
+impl PersonRepoFactory {
+    /// Create a new PersonRepoFactory singleton
+    ///
+    /// Optionally register cache handlers with a notification listener
+    pub fn new(listener: Option<&mut CacheNotificationListener>) -> Arc<Self> {
+        let country_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+        
+        let country_subdivision_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+        
+        // Register handlers with listener if provided
+        if let Some(listener) = listener {
+            let handler = Arc::new(IndexCacheHandler::new(
+                "country_idx".to_string(),
+                country_idx_cache.clone(),
+            ));
+            listener.register_handler(handler);
+            
+            let subdivision_handler = Arc::new(IndexCacheHandler::new(
+                "country_subdivision_idx".to_string(),
+                country_subdivision_idx_cache.clone(),
+            ));
+            listener.register_handler(subdivision_handler);
+        }
+        
+        Arc::new(Self {
+            country_idx_cache,
+            country_subdivision_idx_cache,
+        })
+    }
+
+    /// Build a CountryRepository with the given executor
+    pub fn build_country_repo(&self, session: &impl UnitOfWorkSession) -> Arc<CountryRepositoryImpl> {
+        let repo = Arc::new(CountryRepositoryImpl::new(
+            session.executor().clone(),
+            self.country_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build a CountrySubdivisionRepository with the given executor
+    pub fn build_country_subdivision_repo(&self, session: &impl UnitOfWorkSession) -> Arc<CountrySubdivisionRepositoryImpl> {
+        let repo = Arc::new(CountrySubdivisionRepositoryImpl::new(
+            session.executor().clone(),
+            self.country_subdivision_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build all person repositories with the given executor
+    pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> PersonRepositories {
+        PersonRepositories {
+            country_repository: self.build_country_repo(session),
+            country_subdivision_repository: self.build_country_subdivision_repo(session),
+        }
+    }
+}
+
+/// Container for all person module repositories
+pub struct PersonRepositories {
+    pub country_repository: Arc<CountryRepositoryImpl>,
+    pub country_subdivision_repository: Arc<CountrySubdivisionRepositoryImpl>,
+}
+```
+
+### Factory Key Concepts
+
+1. **Singleton Pattern**: The factory should be created once and shared across the application
+2. **Cache Management**: The factory owns all module-level caches (wrapped in `Arc<ParkingRwLock<...>>`)
+3. **Cache Notification**: Optionally register cache handlers with a notification listener for automatic cache updates
+4. **Repository Building**: Provides methods to instantiate repositories with a given session/executor
+5. **Transaction Awareness**: Automatically registers repositories as transaction-aware with the session
+6. **Convenience Methods**: Provides `build_all_repos()` for creating all repositories at once
+
+### Factory Usage Pattern
+
+```rust
+// Application initialization (once)
+let mut listener = CacheNotificationListener::new(pool.clone());
+let person_factory = PersonRepoFactory::new(Some(&mut listener));
+
+// Per-transaction usage
+let session = unit_of_work.start_session().await?;
+let person_repos = person_factory.build_all_repos(&session);
+
+// Use repositories
+let countries = person_repos.country_repository
+    .load_batch(&country_ids)
+    .await?;
+
+// Commit or rollback - repositories automatically handle cache updates
+session.commit().await?;
+```
+
+### Adding New Entities to Existing Factory
+
+When adding a new entity to an existing module:
+
+1. **Add cache field** to the factory struct:
+   ```rust
+   {new_entity}_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<{NewEntity}IdxModel>>>,
+   ```
+
+2. **Initialize cache** in `new()`:
+   ```rust
+   let {new_entity}_idx_cache = Arc::new(ParkingRwLock::new(
+       business_core_db::IdxModelCache::new(vec![]).unwrap()
+   ));
+   ```
+
+3. **Register handler** in `new()`:
+   ```rust
+   if let Some(listener) = listener {
+       let handler = Arc::new(IndexCacheHandler::new(
+           "{new_entity}_idx".to_string(),
+           {new_entity}_idx_cache.clone(),
+       ));
+       listener.register_handler(handler);
+   }
+   ```
+
+4. **Add build method**:
+   ```rust
+   pub fn build_{new_entity}_repo(&self, session: &impl UnitOfWorkSession) -> Arc<{NewEntity}RepositoryImpl> {
+       let repo = Arc::new({NewEntity}RepositoryImpl::new(
+           session.executor().clone(),
+           self.{new_entity}_idx_cache.clone(),
+       ));
+       session.register_transaction_aware(repo.clone());
+       repo
+   }
+   ```
+
+5. **Add field to repositories container**:
+   ```rust
+   pub struct {Module}Repositories {
+       // ... existing fields
+       pub {new_entity}_repository: Arc<{NewEntity}RepositoryImpl>,
+   }
+   ```
+
+6. **Update `build_all_repos()`**:
+   ```rust
+   pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> {Module}Repositories {
+       {Module}Repositories {
+           // ... existing repositories
+           {new_entity}_repository: self.build_{new_entity}_repo(session),
+       }
+   }
+   ```
 
 ---
 
@@ -919,6 +1320,8 @@ pub use {entity}_repository::{Entity}RepositoryImpl;
 | `Option<i64>` | `BIGINT` | Yes | `row.try_get("field").ok()` |
 | `String` | `TEXT` | No | `row.get("field")` |
 | `Option<String>` | `TEXT` | Yes | `row.get("field")` |
+| `{EnumName}` | `{enum_name}` (custom) | No | `row.get("field")` |
+| `Option<{EnumName}>` | `{enum_name}` (custom) | Yes | `row.get("field")` |
 
 ### Index Key Types
 
@@ -937,10 +1340,14 @@ pub use {entity}_repository::{Entity}RepositoryImpl;
 -- Migration: Initial {Entity} Schema
 -- Description: Creates {entity}-related tables and indexes
 
+-- Enum Types (if any)
+CREATE TYPE IF NOT EXISTS {enum_name} AS ENUM ('Variant1', 'Variant2');
+
 -- {Entity} Table
 CREATE TABLE IF NOT EXISTS {table_name} (
     id UUID PRIMARY KEY,
     -- ... other fields
+    -- enum_field {enum_name} NOT NULL
 );
 
 -- {Entity} Index Table
@@ -971,6 +1378,9 @@ DROP TRIGGER IF EXISTS {table_name}_idx_notify ON {table_name}_idx;
 -- Drop tables (index table first due to foreign key constraint)
 DROP TABLE IF EXISTS {table_name}_idx CASCADE;
 DROP TABLE IF EXISTS {table_name} CASCADE;
+
+-- Drop enum types (if any)
+DROP TYPE IF EXISTS {enum_name};
 ```
 
 ---
@@ -1057,6 +1467,7 @@ After generating code, verify:
 - [ ] Index computation in `to_index()` is correct
 - [ ] Custom query methods use cache correctly
 - [ ] Tests cover happy path, empty, and error cases
+- [ ] **Cache notification test is included** (required for entities with in-memory caches)
 - [ ] Module registration is complete
 - [ ] Code compiles without errors
 - [ ] All imports are correct

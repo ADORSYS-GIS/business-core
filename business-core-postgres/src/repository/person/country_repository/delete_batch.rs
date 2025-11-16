@@ -45,7 +45,7 @@ impl DeleteBatch<Postgres> for CountryRepositoryImpl {
     async fn delete_batch(
         &self,
         ids: &[Uuid],
-        _audit_log_id: Uuid,
+        _audit_log_id: Option<Uuid>,
     ) -> Result<usize, Box<dyn Error + Send + Sync>> {
         Self::delete_batch_impl(self, ids).await
     }
@@ -73,11 +73,10 @@ mod tests {
             countries.push(country);
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let saved_countries = country_repo.create_batch(countries.clone(), audit_log_id).await?;
+        let saved_countries = country_repo.create_batch(countries.clone(), None).await?;
         let ids: Vec<Uuid> = saved_countries.iter().map(|c| c.id).collect();
 
-        let deleted_count = country_repo.delete_batch(&ids, audit_log_id).await?;
+        let deleted_count = country_repo.delete_batch(&ids, None).await?;
         assert_eq!(deleted_count, 5);
 
         Ok(())
@@ -93,8 +92,7 @@ mod tests {
             ids.push(Uuid::new_v4());
         }
 
-        let audit_log_id = Uuid::new_v4();
-        let deleted_count = country_repo.delete_batch(&ids, audit_log_id).await?;
+        let deleted_count = country_repo.delete_batch(&ids, None).await?;
         assert_eq!(deleted_count, 0);
 
         Ok(())

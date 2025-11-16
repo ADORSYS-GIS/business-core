@@ -1,6 +1,9 @@
 use std::sync::Arc;
 use postgres_unit_of_work::UnitOfWorkSession;
-use super::audit_log_repository::AuditLogRepositoryImpl;
+use super::{
+    audit_link_repository::AuditLinkRepositoryImpl,
+    audit_log_repository::AuditLogRepositoryImpl,
+};
 
 /// Factory for creating audit module repositories
 ///
@@ -23,10 +26,16 @@ impl AuditRepoFactory {
         Arc::new(AuditLogRepositoryImpl::new(session.executor().clone()))
     }
 
+    /// Build an AuditLinkRepository with the given executor
+    pub fn build_audit_link_repo(&self, session: &impl UnitOfWorkSession) -> Arc<AuditLinkRepositoryImpl> {
+        Arc::new(AuditLinkRepositoryImpl::new(session.executor().clone()))
+    }
+
     /// Build all audit repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> AuditRepositories {
         AuditRepositories {
             audit_log_repository: self.build_audit_log_repo(session),
+            audit_link_repository: self.build_audit_link_repo(session),
         }
     }
 }
@@ -34,4 +43,5 @@ impl AuditRepoFactory {
 /// Container for all audit module repositories
 pub struct AuditRepositories {
     pub audit_log_repository: Arc<AuditLogRepositoryImpl>,
+    pub audit_link_repository: Arc<AuditLinkRepositoryImpl>,
 }

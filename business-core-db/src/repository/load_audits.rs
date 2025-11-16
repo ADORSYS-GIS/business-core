@@ -3,7 +3,6 @@ use sqlx::Database;
 use uuid::Uuid;
 
 use crate::models::auditable::Auditable;
-use crate::models::audit::audit_hash::AuditHashModel;
 use crate::repository::pagination::{Page, PageRequest};
 
 /// Generic repository trait for loading audit records for entities with pagination
@@ -20,7 +19,7 @@ use crate::repository::pagination::{Page, PageRequest};
 /// use business_core_db::repository::pagination::PageRequest;
 ///
 /// impl<DB: Database> LoadAudits<DB, PersonModel> for PersonRepositoryImpl<DB> {
-///     async fn load_audits(&self, id: Uuid, page: PageRequest) -> Result<Page<(PersonModel, AuditHashModel)>, Box<dyn Error + Send + Sync>> {
+///     async fn load_audits(&self, id: Uuid, page: PageRequest) -> Result<Page<PersonModel>, Box<dyn Error + Send + Sync>> {
 ///         // Implementation
 ///     }
 /// }
@@ -38,7 +37,7 @@ pub trait LoadAudits<DB: Database, T: Auditable>: Send + Sync {
     /// * `page` - The pagination parameters (limit and offset)
     ///
     /// # Returns
-    /// * `Ok(Page<(T, AuditHashModel)>)` - A page containing tuples of entity state and audit metadata
+    /// * `Ok(Page<T>)` - A page containing the entity state
     /// * `Err` - An error if the audit records could not be loaded
-    async fn load_audits(&self, id: Uuid, page: PageRequest) -> Result<Page<(T, AuditHashModel)>, Box<dyn std::error::Error + Send + Sync>>;
+    async fn load_audits(&self, id: Uuid, page: PageRequest) -> Result<Page<T>, Box<dyn std::error::Error + Send + Sync>>;
 }
