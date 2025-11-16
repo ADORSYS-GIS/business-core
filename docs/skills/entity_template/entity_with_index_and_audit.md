@@ -712,6 +712,9 @@ Extends the base template checklist with:
 - [ ] Migration includes audit table with correct schema
 - [ ] Cleanup script removes audit table
 - [ ] No version field in audit table
+- [ ] **Comprehensive tests are implemented for ALL repository methods** (create_batch, load_batch, update_batch, delete_batch, exist_by_ids, and all custom finder methods)
+- [ ] **Cache notification test is included** to verify direct database operations trigger cache updates
+- [ ] All tests verify correct cache synchronization and audit trail integrity
 
 ---
 
@@ -756,6 +759,9 @@ session.commit().await?;
 - Use CBOR serialization for hash computation
 - Store antecedent hash and audit_log_id for chain verification
 - Test audit trail integrity and hash verification
+- **Generate comprehensive tests for EVERY repository method implemented**
+- **Include cache notification tests to verify database triggers work correctly**
+- **Verify cache synchronization in all tests**
 
 ### ❌ DON'T:
 
@@ -765,6 +771,8 @@ session.commit().await?;
 - Forget to update audit_log_id in the entity
 - Create a dedicated audit model (all fields are in the main entity model)
 - Use version numbers (audit records are keyed by id and audit_log_id)
+- **Skip test generation for any repository method**
+- **Forget to test cache notification mechanism**
 
 ---
 

@@ -1432,6 +1432,9 @@ The skill should generate:
 - Include comprehensive tests for all operations
 - Use `pub(super)` for implementation methods
 - Follow the module structure exactly
+- **Generate tests for EVERY repository method implemented**
+- **Include cache notification tests for all entities with in-memory caches**
+- **Verify cache synchronization in all tests**
 
 ### ❌ DON'T:
 
@@ -1442,6 +1445,8 @@ The skill should generate:
 - Forget to implement all trait methods
 - Mix sync and async operations incorrectly
 - Ignore test coverage for edge cases
+- **Skip test generation for any repository method**
+- **Forget to test the cache notification mechanism**
 
 ---
 
@@ -1459,6 +1464,8 @@ After generating code, verify:
 - [ ] Custom query methods use cache correctly
 - [ ] Tests cover happy path, empty, and error cases
 - [ ] **Cache notification test is included** (required for entities with in-memory caches)
+- [ ] **Comprehensive tests are implemented for ALL repository methods** (create_batch, load_batch, update_batch, delete_batch, exist_by_ids, and all custom finder methods)
+- [ ] All tests verify correct cache synchronization
 - [ ] Module registration is complete
 - [ ] Code compiles without errors
 - [ ] All imports are correct
