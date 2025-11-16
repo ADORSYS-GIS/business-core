@@ -11,7 +11,7 @@ pub fn hash_as_i64<T: Serialize>(data: &T) -> Result<i64, String> {
     let mut hasher = XxHash64::with_seed(0);
     let mut cbor = Vec::new();
     ciborium::ser::into_writer(data, &mut cbor)
-        .map_err(|e| format!("Failed to serialize data for hashing: {}", e))?;
+        .map_err(|e| format!("Failed to serialize data for hashing: {e}"))?;
     hasher.write(&cbor);
     Ok(hasher.finish() as i64)
 }
