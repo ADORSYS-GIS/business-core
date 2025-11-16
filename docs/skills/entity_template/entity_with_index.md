@@ -237,11 +237,8 @@ impl {Entity}RepositoryImpl {
         let query = sqlx::query("SELECT * FROM {table_name}_idx");
         let rows = {
             let mut tx = executor.tx.lock().await;
-            if let Some(transaction) = tx.as_mut() {
-                query.fetch_all(&mut **transaction).await?
-            } else {
-                return Err(sqlx::Error::PoolTimedOut);
-            }
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            query.fetch_all(&mut **transaction).await?
         };
         
         let mut idx_models = Vec::with_capacity(rows.len());
@@ -308,38 +305,34 @@ impl {Entity}RepositoryImpl {
         let mut indices = Vec::new();
         
         // Acquire lock once and do all database operations
-        {
-            let mut tx = repo.executor.tx.lock().await;
-            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
-            
-            for item in items {
-                // Execute main insert
-                sqlx::query(
-                    r#"
-                    INSERT INTO {table_name} ({field_list})
-                    VALUES ({value_placeholders})
-                    "#,
-                )
-                // ... bind all fields
-                .execute(&mut **transaction)
-                .await?;
-
-                // Insert into index table
-                let idx = item.to_index();
-                sqlx::query(
-                    r#"
-                    INSERT INTO {table_name}_idx ({index_field_list})
-                    VALUES ({index_value_placeholders})
-                    "#,
-                )
-                // ... bind index fields
-                .execute(&mut **transaction)
-                .await?;
-
-                indices.push(idx);
-                saved_items.push(item);
-            }
-        } // Transaction lock released here
+        let mut tx = repo.executor.tx.lock().await;
+        let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+        
+        for item in items {
+            // Execute main insert
+            sqlx::query(
+                r#"
+                INSERT INTO {table_name} ({field_list})
+                VALUES ({value_placeholders})
+                "#,
+            )
+            // ... bind all fields
+            .execute(&mut **transaction)
+            .await?;
+            // Insert into index table
+            let idx = item.to_index();
+            sqlx::query(
+                r#"
+                INSERT INTO {table_name}_idx ({index_field_list})
+                VALUES ({index_value_placeholders})
+                "#,
+            )
+            // ... bind index fields
+            .execute(&mut **transaction)
+            .await?;
+            indices.push(idx);
+            saved_items.push(item);
+        }
         
         // Update cache after releasing transaction lock
         {
@@ -395,11 +388,8 @@ impl {Entity}RepositoryImpl {
         let query = r#"SELECT * FROM {table_name} WHERE id = ANY($1)"#;
         let rows = {
             let mut tx = repo.executor.tx.lock().await;
-            if let Some(transaction) = tx.as_mut() {
-                sqlx::query(query).bind(ids).fetch_all(&mut **transaction).await?
-            } else {
-                return Err("Transaction has been consumed".into());
-            }
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+            sqlx::query(query).bind(ids).fetch_all(&mut **transaction).await?
         };
         
         let mut item_map = std::collections::HashMap::new();
@@ -455,27 +445,24 @@ impl {Entity}RepositoryImpl {
         let mut indices = Vec::new();
         
         // Acquire lock once and do all database operations
-        {
-            let mut tx = self.executor.tx.lock().await;
-            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
-            
-            for item in items {
-                // Execute update
-                sqlx::query(
-                    r#"
-                    UPDATE {table_name}
-                    SET {field_updates}
-                    WHERE id = $1
-                    "#,
-                )
-                // ... bind fields
-                .execute(&mut **transaction)
-                .await?;
-
-                indices.push((item.id, item.to_index()));
-                updated_items.push(item);
-            }
-        } // Transaction lock released here
+        let mut tx = self.executor.tx.lock().await;
+        let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+        
+        for item in items {
+            // Execute update
+            sqlx::query(
+                r#"
+                UPDATE {table_name}
+                SET {field_updates}
+                WHERE id = $1
+                "#,
+            )
+            // ... bind fields
+            .execute(&mut **transaction)
+            .await?;
+            indices.push((item.id, item.to_index()));
+            updated_items.push(item);
+        }
         
         // Update cache after releasing transaction lock
         {
@@ -531,14 +518,18 @@ impl {Entity}RepositoryImpl {
         let delete_idx_query = r#"DELETE FROM {table_name}_idx WHERE id = ANY($1)"#;
         let delete_query = r#"DELETE FROM {table_name} WHERE id = ANY($1)"#;
 
-        let rows_affected = {
-            let mut tx = repo.executor.tx.lock().await;
-            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
-            
-            sqlx::query(delete_idx_query).bind(ids).execute(&mut **transaction).await?;
-            let result = sqlx::query(delete_query).bind(ids).execute(&mut **transaction).await?;
-            result.rows_affected() as usize
-        }; // Transaction lock released here
+        let mut tx = repo.executor.tx.lock().await;
+        let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+        
+        sqlx::query(delete_idx_query)
+            .bind(ids)
+            .execute(&mut **transaction)
+            .await?;
+        let result = sqlx::query(delete_query)
+            .bind(ids)
+            .execute(&mut **transaction)
+            .await?;
+        let rows_affected = result.rows_affected() as usize;
         
         // Update cache after releasing transaction lock
         {
@@ -658,14 +649,14 @@ The cache implementation uses a two-tier architecture:
 **ALWAYS follow this pattern:**
 
 ```rust
-// 1. Acquire lock once
-{
-    let mut tx = self.executor.tx.lock().await;
-    let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
-    
-    // 2. Perform all database operations
-    // ...
-} // 3. Release lock immediately
+// 1. Acquire transaction lock
+let mut tx = self.executor.tx.lock().await;
+let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+
+// 2. Perform all database operations
+// ...
+
+// 3. The lock is released automatically when `tx` goes out of scope.
 
 // 4. Update cache AFTER lock is released (stages changes locally)
 {

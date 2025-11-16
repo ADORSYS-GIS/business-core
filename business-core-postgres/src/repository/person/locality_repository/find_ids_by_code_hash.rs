@@ -21,7 +21,7 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::utils::hash_as_i64;
     use heapless::String as HeaplessString;
-    use super::super::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
+    use crate::repository::person::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
     async fn test_find_ids_by_code_hash() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

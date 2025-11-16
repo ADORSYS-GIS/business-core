@@ -54,7 +54,7 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::load_batch::LoadBatch;
     use uuid::Uuid;
-    use super::super::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
+    use crate::repository::person::test_utils::{create_test_country, create_test_country_subdivision, create_test_locality};
 
     #[tokio::test]
     async fn test_load_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
