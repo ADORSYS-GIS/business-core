@@ -1,8 +1,10 @@
 use business_core_db::models::audit::AuditLogModel;
 use business_core_db::models::person::country::CountryModel;
 use business_core_db::models::person::country_subdivision::CountrySubdivisionModel;
+use business_core_db::models::person::entity_reference::{EntityReferenceModel, RelationshipRole};
 use business_core_db::models::person::locality::LocalityModel;
 use business_core_db::models::person::location::{LocationModel, LocationType};
+use business_core_db::models::person::person::{PersonModel, PersonType};
 use chrono::Utc;
 use heapless::String as HeaplessString;
 use uuid::Uuid;
@@ -68,6 +70,45 @@ pub fn create_test_location(locality_id: Uuid, street_line1: &str) -> LocationMo
         longitude: None,
         accuracy_meters: None,
         location_type: LocationType::Residential,
+        antecedent_hash: 0,
+        antecedent_audit_log_id: Uuid::nil(),
+        hash: 0,
+        audit_log_id: None,
+    }
+}
+
+pub fn create_test_person(display_name: &str) -> PersonModel {
+    PersonModel {
+        id: Uuid::new_v4(),
+        person_type: PersonType::Natural,
+        display_name: HeaplessString::try_from(display_name).unwrap(),
+        external_identifier: None,
+        entity_reference_count: 0,
+        organization_person_id: None,
+        messaging_info1: None,
+        messaging_info2: None,
+        messaging_info3: None,
+        messaging_info4: None,
+        messaging_info5: None,
+        department: None,
+        location_id: None,
+        duplicate_of_person_id: None,
+        antecedent_hash: 0,
+        antecedent_audit_log_id: Uuid::nil(),
+        hash: 0,
+        audit_log_id: None,
+    }
+}
+
+pub fn create_test_entity_reference(person_id: Uuid, reference_external_id: &str) -> EntityReferenceModel {
+    EntityReferenceModel {
+        id: Uuid::new_v4(),
+        person_id,
+        entity_role: RelationshipRole::Customer,
+        reference_external_id: HeaplessString::try_from(reference_external_id).unwrap(),
+        reference_details_l1: None,
+        reference_details_l2: None,
+        reference_details_l3: None,
         antecedent_hash: 0,
         antecedent_audit_log_id: Uuid::nil(),
         hash: 0,

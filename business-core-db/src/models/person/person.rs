@@ -116,12 +116,8 @@ impl IndexAware for PersonModel {
     type IndexType = PersonIdxModel;
     
     fn to_index(&self) -> Self::IndexType {
-        let external_identifier_hash = self.external_identifier.as_ref().map(|ext_id| {
-            use std::hash::{Hash, Hasher};
-            use twox_hash::XxHash64;
-            let mut hasher = XxHash64::with_seed(0);
-            ext_id.as_str().hash(&mut hasher);
-            hasher.finish() as i64
+        let external_identifier_hash = self.external_identifier.as_ref().and_then(|ext_id| {
+            crate::utils::hash_as_i64(&ext_id.as_str()).ok()
         });
 
         PersonIdxModel {

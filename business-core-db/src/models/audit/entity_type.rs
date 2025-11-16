@@ -6,6 +6,7 @@ use sqlx::Type;
 pub enum EntityType {
     Location,
     Person,
+    EntityReference,
 }
 
 impl From<EntityType> for &str {
@@ -13,6 +14,7 @@ impl From<EntityType> for &str {
         match val {
             EntityType::Location => "LOCATION",
             EntityType::Person => "PERSON",
+            EntityType::EntityReference => "ENTITY_REFERENCE",
         }
     }
 }

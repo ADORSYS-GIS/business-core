@@ -17,6 +17,17 @@ This skill builds upon the base indexable entity template by adding:
 
 **You must read and understand** [Entity with Index](entity_with_index.md) first. This document only covers the **additional** patterns for audit functionality. All base patterns from the indexable entity template still apply.
 
+**CRITICAL PATTERN - Finder Methods**: The finder method pattern for secondary index fields described in the base template applies to auditable entities as well:
+
+**Rule**: For each secondary index field (field name not equal to `id`) in your `{Entity}IdxModel`, you MUST create a corresponding finder method that returns `Vec<{Entity}IdxModel>`.
+
+**Example**: If your `EntityReferenceIdxModel` has:
+- `id: Uuid` → No finder needed (primary key)
+- `person_id: Uuid` → MUST create `find_by_person_id.rs`
+- `reference_external_id_hash: i64` → MUST create `find_by_reference_external_id_hash.rs`
+
+See the [Finder Methods section](entity_with_index.md#finder-methods-for-secondary-index-fields) in the base template for detailed implementation patterns.
+
 ---
 
 ## Template Reference
@@ -712,6 +723,10 @@ Extends the base template checklist with:
 - [ ] Migration includes audit table with correct schema
 - [ ] Cleanup script removes audit table
 - [ ] No version field in audit table
+- [ ] **One finder method is created for each secondary index field** (field name not equal to `id`)
+- [ ] **Comprehensive tests are implemented for ALL repository methods** (create_batch, load_batch, update_batch, delete_batch, exist_by_ids, and all custom finder methods)
+- [ ] **Cache notification test is included** to verify direct database operations trigger cache updates
+- [ ] All tests verify correct cache synchronization and audit trail integrity
 
 ---
 
@@ -756,6 +771,9 @@ session.commit().await?;
 - Use CBOR serialization for hash computation
 - Store antecedent hash and audit_log_id for chain verification
 - Test audit trail integrity and hash verification
+- **Generate comprehensive tests for EVERY repository method implemented**
+- **Include cache notification tests to verify database triggers work correctly**
+- **Verify cache synchronization in all tests**
 
 ### ❌ DON'T:
 
@@ -765,6 +783,8 @@ session.commit().await?;
 - Forget to update audit_log_id in the entity
 - Create a dedicated audit model (all fields are in the main entity model)
 - Use version numbers (audit records are keyed by id and audit_log_id)
+- **Skip test generation for any repository method**
+- **Forget to test cache notification mechanism**
 
 ---
 
