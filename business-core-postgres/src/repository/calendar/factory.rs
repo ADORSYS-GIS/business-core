@@ -5,7 +5,8 @@ use postgres_index_cache::{CacheNotificationListener, IndexCacheHandler, MainMod
 use std::time::Duration;
 use business_core_db::models::calendar::weekend_days::{WeekendDaysIdxModel, WeekendDaysModel};
 use business_core_db::models::calendar::business_day::{BusinessDayIdxModel, BusinessDayModel};
-use super::{WeekendDaysRepositoryImpl, BusinessDayRepositoryImpl};
+use business_core_db::models::calendar::date_calculation_rules::{DateCalculationRulesIdxModel, DateCalculationRulesModel};
+use super::{WeekendDaysRepositoryImpl, BusinessDayRepositoryImpl, DateCalculationRulesRepositoryImpl};
 
 /// Factory for creating calendar module repositories with main cache
 pub struct CalendarRepoFactory {
@@ -13,6 +14,8 @@ pub struct CalendarRepoFactory {
     weekend_days_cache: Arc<ParkingRwLock<MainModelCache<WeekendDaysModel>>>,
     business_day_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<BusinessDayIdxModel>>>,
     business_day_cache: Arc<ParkingRwLock<MainModelCache<BusinessDayModel>>>,
+    date_calculation_rules_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<DateCalculationRulesIdxModel>>>,
+    date_calculation_rules_cache: Arc<ParkingRwLock<MainModelCache<DateCalculationRulesModel>>>,
 }
 
 impl CalendarRepoFactory {
@@ -52,6 +55,22 @@ impl CalendarRepoFactory {
             MainModelCache::new(business_day_cache_config)
         ));
         
+        // Initialize date_calculation_rules index cache
+        let date_calculation_rules_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+        
+        // Initialize date_calculation_rules main cache with configuration
+        let date_calculation_rules_cache_config = CacheConfig::new(
+            1000,  // Max 1000 entities in cache
+            EvictionPolicy::LRU,  // Least Recently Used eviction
+        )
+        .with_ttl(Duration::from_secs(3600)); // 1 hour TTL
+        
+        let date_calculation_rules_cache = Arc::new(ParkingRwLock::new(
+            MainModelCache::new(date_calculation_rules_cache_config)
+        ));
+        
         // Register handlers with listener if provided
         if let Some(listener) = listener {
             // Register weekend_days index cache handler
@@ -81,6 +100,20 @@ impl CalendarRepoFactory {
                 business_day_cache.clone(),
             ));
             listener.register_handler(business_day_main_handler);
+            
+            // Register date_calculation_rules index cache handler
+            let date_calculation_rules_idx_handler = Arc::new(IndexCacheHandler::new(
+                "calendar_date_calculation_rules_idx".to_string(),
+                date_calculation_rules_idx_cache.clone(),
+            ));
+            listener.register_handler(date_calculation_rules_idx_handler);
+            
+            // Register date_calculation_rules main cache handler
+            let date_calculation_rules_main_handler = Arc::new(MainModelCacheHandler::new(
+                "calendar_date_calculation_rules".to_string(),  // Note: main table name, not _idx
+                date_calculation_rules_cache.clone(),
+            ));
+            listener.register_handler(date_calculation_rules_main_handler);
         }
         
         Arc::new(Self {
@@ -88,6 +121,8 @@ impl CalendarRepoFactory {
             weekend_days_cache,
             business_day_idx_cache,
             business_day_cache,
+            date_calculation_rules_idx_cache,
+            date_calculation_rules_cache,
         })
     }
 
@@ -113,11 +148,23 @@ impl CalendarRepoFactory {
         repo
     }
 
+    /// Build a DateCalculationRulesRepository with the given executor
+    pub fn build_date_calculation_rules_repo(&self, session: &impl UnitOfWorkSession) -> Arc<DateCalculationRulesRepositoryImpl> {
+        let repo = Arc::new(DateCalculationRulesRepositoryImpl::new(
+            session.executor().clone(),
+            self.date_calculation_rules_idx_cache.clone(),
+            self.date_calculation_rules_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all calendar repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> CalendarRepositories {
         CalendarRepositories {
             weekend_days_repository: self.build_weekend_days_repo(session),
             business_day_repository: self.build_business_day_repo(session),
+            date_calculation_rules_repository: self.build_date_calculation_rules_repo(session),
         }
     }
 }
@@ -126,4 +173,5 @@ impl CalendarRepoFactory {
 pub struct CalendarRepositories {
     pub weekend_days_repository: Arc<WeekendDaysRepositoryImpl>,
     pub business_day_repository: Arc<BusinessDayRepositoryImpl>,
+    pub date_calculation_rules_repository: Arc<DateCalculationRulesRepositoryImpl>,
 }

@@ -11,7 +11,7 @@ use postgres_index_cache::CacheNotificationListener;
 use postgres_unit_of_work::{PostgresUnitOfWork, UnitOfWork};
 use tokio::sync::OnceCell;
 
-use crate::repository::{audit::AuditRepositories, person::PersonRepositories, reason_and_purpose::ReasonAndPurposeRepositories};
+use crate::repository::{audit::AuditRepositories, person::PersonRepositories, reason_and_purpose::ReasonAndPurposeRepositories, calendar::CalendarRepositories};
 
 // Flag to track if DB initialization has been done
 static DB_INITIALIZED: OnceCell<()> = OnceCell::const_new();
@@ -81,6 +81,7 @@ pub struct TestContext {
     pub audit_repos: AuditRepositories,
     pub person_repos: PersonRepositories,
     pub reason_and_purpose_repos: ReasonAndPurposeRepositories,
+    pub calendar_repos: CalendarRepositories,
     pub pool: Arc<PgPool>,
     listener_handle: Option<tokio::task::JoinHandle<()>>,
 }
@@ -99,6 +100,11 @@ impl TestContext {
     /// Get the reason_and_purpose repositories from the context
     pub fn reason_and_purpose_repos(&self) -> &ReasonAndPurposeRepositories {
         &self.reason_and_purpose_repos
+    }
+
+    /// Get the calendar repositories from the context
+    pub fn calendar_repos(&self) -> &CalendarRepositories {
+        &self.calendar_repos
     }
 
     /// Get the pool from the context
@@ -146,16 +152,19 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     let audit_factory = crate::repository::audit::AuditRepoFactory::new();
     let person_factory = crate::repository::person::PersonRepoFactory::new(None);
     let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(None);
+    let calendar_factory = crate::repository::calendar::CalendarRepoFactory::new(None);
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
     let person_repos = person_factory.build_all_repos(&session);
     let reason_and_purpose_repos = reason_and_purpose_factory.build_all_repos(&session);
+    let calendar_repos = calendar_factory.build_all_repos(&session);
 
     Ok(TestContext {
         audit_repos,
         person_repos,
         reason_and_purpose_repos,
+        calendar_repos,
         pool,
         listener_handle: None,
     })
@@ -183,11 +192,13 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     let audit_factory = crate::repository::audit::AuditRepoFactory::new();
     let person_factory = crate::repository::person::PersonRepoFactory::new(Some(&mut listener));
     let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(Some(&mut listener));
+    let calendar_factory = crate::repository::calendar::CalendarRepoFactory::new(Some(&mut listener));
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
     let person_repos = person_factory.build_all_repos(&session);
     let reason_and_purpose_repos = reason_and_purpose_factory.build_all_repos(&session);
+    let calendar_repos = calendar_factory.build_all_repos(&session);
     
     // Start listening to notifications in background
     let pool_clone = pool.clone();
@@ -200,6 +211,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
         audit_repos,
         person_repos,
         reason_and_purpose_repos,
+        calendar_repos,
         pool,
         listener_handle: Some(listen_handle),
     })

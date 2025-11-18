@@ -1,13 +1,13 @@
-use business_core_db::models::calendar::business_day::BusinessDayModel;
+use business_core_db::models::calendar::date_calculation_rules::DateCalculationRulesModel;
 use business_core_db::repository::exist_by_ids::ExistByIds;
-use super::repo_impl::BusinessDayRepositoryImpl;
+use super::repo_impl::DateCalculationRulesRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
 use sqlx::Postgres;
 
 #[async_trait]
-impl ExistByIds<sqlx::Postgres> for BusinessDayRepositoryImpl {
+impl ExistByIds<sqlx::Postgres> for DateCalculationRulesRepositoryImpl {
     async fn exist_by_ids(
         &self,
         ids: &[Uuid],
@@ -16,9 +16,9 @@ impl ExistByIds<sqlx::Postgres> for BusinessDayRepositoryImpl {
     }
 }
 
-impl BusinessDayRepositoryImpl {
+impl DateCalculationRulesRepositoryImpl {
     pub(super) async fn exist_by_ids_impl(
-        repo: &BusinessDayRepositoryImpl,
+        repo: &DateCalculationRulesRepositoryImpl,
         ids: &[Uuid],
     ) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
         if ids.is_empty() {
@@ -26,7 +26,7 @@ impl BusinessDayRepositoryImpl {
         }
 
         // Use index cache to check existence
-        let idx_cache = repo.business_day_idx_cache.read().await;
+        let idx_cache = repo.date_calculation_rules_idx_cache.read().await;
         let mut result = Vec::new();
         for &id in ids {
             result.push((id, idx_cache.contains_primary(&id)));

@@ -4,11 +4,10 @@ use super::repo_impl::BusinessDayRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
+use sqlx::Postgres;
 
 #[async_trait]
-impl DeleteBatch for BusinessDayRepositoryImpl {
-    type Model = BusinessDayModel;
-
+impl DeleteBatch<sqlx::Postgres> for BusinessDayRepositoryImpl {
     async fn delete_batch(
         &self,
         ids: &[Uuid],

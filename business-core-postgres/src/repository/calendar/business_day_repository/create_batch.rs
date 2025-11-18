@@ -6,16 +6,15 @@ use super::repo_impl::BusinessDayRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
+use sqlx::Postgres;
 
 #[async_trait]
-impl CreateBatch for BusinessDayRepositoryImpl {
-    type Model = BusinessDayModel;
-
+impl CreateBatch<sqlx::Postgres, BusinessDayModel> for BusinessDayRepositoryImpl {
     async fn create_batch(
         &self,
-        items: Vec<Self::Model>,
+        items: Vec<BusinessDayModel>,
         _audit_info: Option<Uuid>,
-    ) -> Result<Vec<Self::Model>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<BusinessDayModel>, Box<dyn Error + Send + Sync>> {
         Self::create_batch_impl(self, items).await
     }
 }

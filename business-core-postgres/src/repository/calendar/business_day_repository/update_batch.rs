@@ -6,16 +6,15 @@ use super::repo_impl::BusinessDayRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
+use sqlx::Postgres;
 
 #[async_trait]
-impl UpdateBatch for BusinessDayRepositoryImpl {
-    type Model = BusinessDayModel;
-
+impl UpdateBatch<sqlx::Postgres, BusinessDayModel> for BusinessDayRepositoryImpl {
     async fn update_batch(
         &self,
-        items: Vec<Self::Model>,
+        items: Vec<BusinessDayModel>,
         _audit_info: Option<Uuid>,
-    ) -> Result<Vec<Self::Model>, Box<dyn Error + Send + Sync>> {
+    ) -> Result<Vec<BusinessDayModel>, Box<dyn Error + Send + Sync>> {
         Self::update_batch_impl(self, items).await
     }
 }
@@ -126,8 +125,9 @@ mod tests {
         let main_cache = business_day_repo.business_day_cache.read().await;
         let cached = main_cache.get(&updated[0].id);
         assert!(cached.is_some());
-        assert_eq!(cached.unwrap().is_business_day, updated[0].is_business_day);
-        assert_eq!(cached.unwrap().is_holiday, updated[0].is_holiday);
+        let cached_ref = cached.as_ref().unwrap();
+        assert_eq!(cached_ref.is_business_day, updated[0].is_business_day);
+        assert_eq!(cached_ref.is_holiday, updated[0].is_holiday);
 
         Ok(())
     }

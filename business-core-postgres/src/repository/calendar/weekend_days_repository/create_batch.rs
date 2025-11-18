@@ -246,6 +246,7 @@ mod tests {
 
         // Create a test weekend_days entity
         let test_item = create_test_weekend_days(None, None);
+        let item_idx = test_item.to_index();
     
         // Give listener more time to start and establish connection
         sleep(Duration::from_millis(2000)).await;
@@ -278,19 +279,44 @@ mod tests {
         .await
         .expect("Failed to insert weekend_days");
 
+        // Insert the index record directly into the database using raw SQL
+        sqlx::query("INSERT INTO calendar_weekend_days_idx (id, country_id, country_subdivision_id) VALUES ($1, $2, $3)")
+            .bind(item_idx.id)
+            .bind(item_idx.country_id)
+            .bind(item_idx.country_subdivision_id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert weekend_days index");
+
         // Give more time for notification to be processed
         sleep(Duration::from_millis(500)).await;
 
         let weekend_days_repo = &ctx.calendar_repos().weekend_days_repository;
 
-        // Verify the main cache was updated via the trigger
+        // Verify the INDEX cache was updated
+        let idx_cache = weekend_days_repo.weekend_days_idx_cache.read().await;
+        assert!(
+            idx_cache.contains_primary(&item_idx.id),
+            "WeekendDays should be in index cache after insert"
+        );
+        drop(idx_cache);
+
+        // Verify the MAIN cache was updated via the trigger
         let main_cache = weekend_days_repo.weekend_days_cache.read().await;
+        
+        // Debug: print cache state
+        println!("Main cache contains item: {}", main_cache.contains(&test_item.id));
+        
         assert!(
             main_cache.contains(&test_item.id),
             "WeekendDays should be in main cache after insert"
         );
     
         let cached_item = main_cache.get(&test_item.id);
+        
+        // Debug: print retrieved item
+        println!("Cached item: {:?}", cached_item);
+        
         assert!(cached_item.is_some(), "WeekendDays should be retrievable from main cache");
         
         // Verify the cached data matches
@@ -301,10 +327,9 @@ mod tests {
         assert_eq!(cached_item.weekend_day_01, test_item.weekend_day_01);
         assert_eq!(cached_item.weekend_day_02, test_item.weekend_day_02);
         
-        // Drop the read lock before proceeding
         drop(main_cache);
 
-        // Delete the record from the database
+        // Delete the record from database (triggers both cache notifications)
         sqlx::query("DELETE FROM calendar_weekend_days WHERE id = $1")
             .bind(test_item.id)
             .execute(&**pool)
@@ -314,7 +339,14 @@ mod tests {
         // Give more time for notification to be processed
         sleep(Duration::from_millis(500)).await;
 
-        // Verify the cache entry was removed
+        // Verify removed from both caches
+        let idx_cache = weekend_days_repo.weekend_days_idx_cache.read().await;
+        assert!(
+            !idx_cache.contains_primary(&item_idx.id),
+            "WeekendDays should be removed from index cache after delete"
+        );
+        drop(idx_cache);
+
         let main_cache = weekend_days_repo.weekend_days_cache.read().await;
         assert!(
             !main_cache.contains(&test_item.id),

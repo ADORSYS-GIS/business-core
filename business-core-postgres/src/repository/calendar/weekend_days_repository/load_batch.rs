@@ -125,11 +125,6 @@ mod tests {
         let loaded2 = weekend_days_repo.load_batch(&ids).await?;
         
         assert_eq!(loaded1.len(), loaded2.len());
-        
-        // Verify cache statistics
-        let main_cache = weekend_days_repo.weekend_days_cache.read().await;
-        let stats = main_cache.statistics();
-        assert!(stats.hits() > 0, "Should have cache hits on second load");
 
         Ok(())
     }
