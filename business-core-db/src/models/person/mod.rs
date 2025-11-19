@@ -6,3 +6,4 @@ pub mod location;
 pub mod person;
 pub mod entity_reference;
 pub mod common_enums;
+pub mod risk_summary;
