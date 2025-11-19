@@ -8,6 +8,7 @@ use crate::models::identifiable::Identifiable;
 use std::collections::HashMap;
 use crate::{HasPrimaryKey, IdxModelCache, Indexable};
 use crate::models::{Index, IndexAware};
+use crate::models::person::common_enums::{RiskRating, PersonStatus};
 
 /// Database model for identity type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
@@ -84,6 +85,17 @@ pub struct PersonModel {
     
     #[serde(serialize_with = "serialize_person_type", deserialize_with = "deserialize_person_type")]
     pub person_type: PersonType,
+    
+    #[serde(
+        serialize_with = "crate::models::person::common_enums::serialize_risk_rating",
+        deserialize_with = "crate::models::person::common_enums::deserialize_risk_rating"
+    )]
+    pub risk_rating: RiskRating,
+    #[serde(
+        serialize_with = "crate::models::person::common_enums::serialize_person_status",
+        deserialize_with = "crate::models::person::common_enums::deserialize_person_status"
+    )]
+    pub status: PersonStatus,
     
     pub display_name: HeaplessString<100>,
 

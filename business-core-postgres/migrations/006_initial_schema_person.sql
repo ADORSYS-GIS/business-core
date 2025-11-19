@@ -4,12 +4,18 @@
 CREATE TYPE person_type AS ENUM ('Natural', 'Legal', 'System', 'Integration', 'Unknown');
 
 CREATE TYPE identity_type AS ENUM ('NationalId', 'Passport', 'CompanyRegistration', 'PermanentResidentCard', 'AsylumCard', 'TemporaryResidentPermit', 'Unknown');
+
+CREATE TYPE risk_rating AS ENUM ('Low', 'Medium', 'High', 'Blacklisted');
+
+CREATE TYPE person_status AS ENUM ('Active', 'PendingVerification', 'Deceased', 'Dissolved', 'Blacklisted');
  
 -- Main Person Table
 -- Stores the current state of the entity.
 CREATE TABLE IF NOT EXISTS person (
     id UUID PRIMARY KEY,
     person_type person_type NOT NULL,
+    risk_rating risk_rating NOT NULL,
+    status person_status NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     external_identifier VARCHAR(50),
     id_type identity_type NOT NULL,
@@ -46,6 +52,8 @@ CREATE TABLE IF NOT EXISTS person_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
     person_type person_type NOT NULL,
+    risk_rating risk_rating NOT NULL,
+    status person_status NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     external_identifier VARCHAR(50),
     id_type identity_type NOT NULL,

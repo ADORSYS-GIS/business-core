@@ -54,12 +54,14 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person_audit
-                    (id, person_type, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                    (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_type)
+                .bind(item.risk_rating)
+                .bind(item.status)
                 .bind(item.display_name.as_str())
                 .bind(item.external_identifier.as_deref())
                 .bind(item.id_type)
@@ -84,19 +86,22 @@ impl PersonRepositoryImpl {
                 let rows_affected = sqlx::query(
                     r#"
                     UPDATE person SET
-                    person_type = $2, display_name = $3, external_identifier = $4,
-                    id_type = $5, id_number = $6,
-                    entity_reference_count = $7, organization_person_id = $8,
-                    messaging_info1 = $9, messaging_info2 = $10, messaging_info3 = $11,
-                    messaging_info4 = $12, messaging_info5 = $13, department = $14,
-                    location_id = $15, duplicate_of_person_id = $16,
-                    antecedent_hash = $17, antecedent_audit_log_id = $18,
-                    hash = $19, audit_log_id = $20
-                    WHERE id = $1 AND hash = $21 AND audit_log_id = $22
+                    person_type = $2, risk_rating = $3, status = $4,
+                    display_name = $5, external_identifier = $6,
+                    id_type = $7, id_number = $8,
+                    entity_reference_count = $9, organization_person_id = $10,
+                    messaging_info1 = $11, messaging_info2 = $12, messaging_info3 = $13,
+                    messaging_info4 = $14, messaging_info5 = $15, department = $16,
+                    location_id = $17, duplicate_of_person_id = $18,
+                    antecedent_hash = $19, antecedent_audit_log_id = $20,
+                    hash = $21, audit_log_id = $22
+                    WHERE id = $1 AND hash = $23 AND audit_log_id = $24
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_type)
+                .bind(item.risk_rating)
+                .bind(item.status)
                 .bind(item.display_name.as_str())
                 .bind(item.external_identifier.as_deref())
                 .bind(item.id_type)

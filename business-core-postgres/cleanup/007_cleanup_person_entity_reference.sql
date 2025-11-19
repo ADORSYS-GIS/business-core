@@ -9,5 +9,6 @@ DROP TABLE IF EXISTS entity_reference_idx CASCADE;
 DROP TABLE IF EXISTS entity_reference_audit CASCADE;
 DROP TABLE IF EXISTS entity_reference CASCADE;
 
--- Drop the custom type
+-- Drop the custom types
 DROP TYPE IF EXISTS person_entity_type;
+DROP TYPE IF EXISTS customer_relationship_status;

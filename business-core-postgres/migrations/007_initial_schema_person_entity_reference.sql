@@ -1,7 +1,9 @@
 -- Migration: Initial Entity Reference Schema with Audit Support
 -- Description: Creates entity_reference-related tables with audit trail.
 
-CREATE TYPE person_entity_type AS ENUM ('Customer', 'Employee', 'Shareholder', 'Director', 'BeneficialOwner', 'Agent', 'Vendor', 'Partner', 'RegulatoryContact', 'EmergencyContact', 'SystemAdmin', 'Other');
+CREATE TYPE person_entity_type AS ENUM ('Customer', 'Employee', 'Shareholder', 'Director', 'UltimateBeneficialOwner', 'Agent', 'Vendor', 'Partner', 'RegulatoryContact', 'EmergencyContact', 'SystemAdmin', 'Guarantor', 'LegalGuardian', 'PowerOfAttorney', 'Beneficiary', 'AuthorizedSignatory', 'ControllingPerson', 'Delegate', 'Administrator', 'Other');
+
+CREATE TYPE customer_relationship_status AS ENUM ('Active', 'Inactive', 'Pending', 'Terminated', 'Unknown');
  
 -- Main Entity Reference Table
 -- Stores the current state of the entity.
@@ -13,6 +15,10 @@ CREATE TABLE IF NOT EXISTS entity_reference (
     reference_details_l1 VARCHAR(50),
     reference_details_l2 VARCHAR(50),
     reference_details_l3 VARCHAR(50),
+    related_person_id UUID,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    status customer_relationship_status,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -38,6 +44,10 @@ CREATE TABLE IF NOT EXISTS entity_reference_audit (
     reference_details_l1 VARCHAR(50),
     reference_details_l2 VARCHAR(50),
     reference_details_l3 VARCHAR(50),
+    related_person_id UUID,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    status customer_relationship_status,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,

@@ -48,8 +48,8 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference_audit
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     "#,
                 )
                 .bind(item.id)
@@ -59,6 +59,10 @@ impl EntityReferenceRepositoryImpl {
                 .bind(item.reference_details_l1.as_deref())
                 .bind(item.reference_details_l2.as_deref())
                 .bind(item.reference_details_l3.as_deref())
+                .bind(item.related_person_id)
+                .bind(item.start_date)
+                .bind(item.end_date)
+                .bind(item.status)
                 .bind(item.antecedent_hash)
                 .bind(item.antecedent_audit_log_id)
                 .bind(item.hash)
@@ -70,8 +74,8 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     "#,
                 )
                 .bind(item.id)
@@ -81,6 +85,10 @@ impl EntityReferenceRepositoryImpl {
                 .bind(item.reference_details_l1.as_deref())
                 .bind(item.reference_details_l2.as_deref())
                 .bind(item.reference_details_l3.as_deref())
+                .bind(item.related_person_id)
+                .bind(item.start_date)
+                .bind(item.end_date)
+                .bind(item.status)
                 .bind(item.antecedent_hash)
                 .bind(item.antecedent_audit_log_id)
                 .bind(item.hash)
@@ -298,8 +306,8 @@ mod tests {
         sqlx::query(
             r#"
             INSERT INTO entity_reference
-            (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             "#,
         )
         .bind(final_entity_reference.id)
@@ -309,6 +317,10 @@ mod tests {
         .bind(final_entity_reference.reference_details_l1.as_deref())
         .bind(final_entity_reference.reference_details_l2.as_deref())
         .bind(final_entity_reference.reference_details_l3.as_deref())
+        .bind(final_entity_reference.related_person_id)
+        .bind(final_entity_reference.start_date)
+        .bind(final_entity_reference.end_date)
+        .bind(final_entity_reference.status)
         .bind(final_entity_reference.antecedent_hash)
         .bind(final_entity_reference.antecedent_audit_log_id)
         .bind(final_entity_reference.hash)

@@ -7,9 +7,9 @@ use uuid::Uuid;
 /// # Audit
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
-pub struct CustomerDocumentModel {
+pub struct DocumentModel {
     pub id: Uuid,
-    pub customer_id: Uuid,
+    pub person_id: Uuid,
     pub document_type: HeaplessString<50>,
     pub document_path: Option<HeaplessString<500>>,
     #[serde(

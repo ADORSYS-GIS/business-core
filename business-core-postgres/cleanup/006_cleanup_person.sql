@@ -12,3 +12,5 @@ DROP TABLE IF EXISTS person CASCADE;
 -- Drop the custom types
 DROP TYPE IF EXISTS person_type;
 DROP TYPE IF EXISTS identity_type;
+DROP TYPE IF EXISTS risk_rating;
+DROP TYPE IF EXISTS person_status;

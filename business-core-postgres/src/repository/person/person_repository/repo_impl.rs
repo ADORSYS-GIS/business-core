@@ -53,6 +53,8 @@ impl TryFromRow<PgRow> for PersonModel {
         Ok(PersonModel {
             id: row.get("id"),
             person_type: row.get("person_type"),
+            risk_rating: row.get("risk_rating"),
+            status: row.get("status"),
             display_name: get_heapless_string(row, "display_name")?,
             external_identifier: get_optional_heapless_string(row, "external_identifier")?,
             id_type: row.get("id_type"),
