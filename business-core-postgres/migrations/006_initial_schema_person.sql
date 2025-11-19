@@ -2,6 +2,8 @@
 -- Description: Creates person-related tables with audit trail.
 
 CREATE TYPE person_type AS ENUM ('Natural', 'Legal', 'System', 'Integration', 'Unknown');
+
+CREATE TYPE identity_type AS ENUM ('NationalId', 'Passport', 'CompanyRegistration', 'PermanentResidentCard', 'AsylumCard', 'TemporaryResidentPermit', 'Unknown');
  
 -- Main Person Table
 -- Stores the current state of the entity.
@@ -10,6 +12,8 @@ CREATE TABLE IF NOT EXISTS person (
     person_type person_type NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     external_identifier VARCHAR(50),
+    id_type identity_type NOT NULL,
+    id_number VARCHAR(50) NOT NULL,
     entity_reference_count INTEGER NOT NULL DEFAULT 0,
     organization_person_id UUID,
     messaging_info1 VARCHAR(50),
@@ -32,7 +36,8 @@ CREATE TABLE IF NOT EXISTS person_idx (
     id UUID PRIMARY KEY REFERENCES person(id) ON DELETE CASCADE,
     external_identifier_hash BIGINT,
     organization_person_id UUID,
-    duplicate_of_person_id UUID
+    duplicate_of_person_id UUID,
+    id_number_hash BIGINT
 );
 
 -- Person Audit Table
@@ -43,6 +48,8 @@ CREATE TABLE IF NOT EXISTS person_audit (
     person_type person_type NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     external_identifier VARCHAR(50),
+    id_type identity_type NOT NULL,
+    id_number VARCHAR(50) NOT NULL,
     entity_reference_count INTEGER NOT NULL DEFAULT 0,
     organization_person_id UUID,
     messaging_info1 VARCHAR(50),

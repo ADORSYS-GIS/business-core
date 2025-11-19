@@ -255,14 +255,16 @@ mod tests {
         sqlx::query(
             r#"
             INSERT INTO person
-            (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            (id, person_type, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             "#,
         )
         .bind(test_person.id)
         .bind(test_person.person_type)
         .bind(test_person.display_name.as_str())
         .bind(test_person.external_identifier.as_deref())
+        .bind(test_person.id_type)
+        .bind(test_person.id_number.as_str())
         .bind(test_person.entity_reference_count)
         .bind(test_person.organization_person_id)
         .bind(test_person.messaging_info1.as_deref())

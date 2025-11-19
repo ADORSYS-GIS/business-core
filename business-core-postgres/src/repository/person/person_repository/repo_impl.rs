@@ -55,6 +55,8 @@ impl TryFromRow<PgRow> for PersonModel {
             person_type: row.get("person_type"),
             display_name: get_heapless_string(row, "display_name")?,
             external_identifier: get_optional_heapless_string(row, "external_identifier")?,
+            id_type: row.get("id_type"),
+            id_number: get_heapless_string(row, "id_number")?,
             entity_reference_count: row.get("entity_reference_count"),
             organization_person_id: row.try_get("organization_person_id").ok(),
             messaging_info1: get_optional_heapless_string(row, "messaging_info1")?,
@@ -80,6 +82,7 @@ impl TryFromRow<PgRow> for PersonIdxModel {
             external_identifier_hash: row.try_get("external_identifier_hash").ok(),
             organization_person_id: row.try_get("organization_person_id").ok(),
             duplicate_of_person_id: row.try_get("duplicate_of_person_id").ok(),
+            id_number_hash: row.try_get("id_number_hash").ok(),
         })
     }
 }

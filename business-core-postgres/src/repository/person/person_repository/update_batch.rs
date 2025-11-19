@@ -54,14 +54,16 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person_audit
-                    (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                    (id, person_type, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_type)
                 .bind(item.display_name.as_str())
                 .bind(item.external_identifier.as_deref())
+                .bind(item.id_type)
+                .bind(item.id_number.as_str())
                 .bind(item.entity_reference_count)
                 .bind(item.organization_person_id)
                 .bind(item.messaging_info1.as_deref())
@@ -83,19 +85,22 @@ impl PersonRepositoryImpl {
                     r#"
                     UPDATE person SET
                     person_type = $2, display_name = $3, external_identifier = $4,
-                    entity_reference_count = $5, organization_person_id = $6,
-                    messaging_info1 = $7, messaging_info2 = $8, messaging_info3 = $9,
-                    messaging_info4 = $10, messaging_info5 = $11, department = $12,
-                    location_id = $13, duplicate_of_person_id = $14,
-                    antecedent_hash = $15, antecedent_audit_log_id = $16,
-                    hash = $17, audit_log_id = $18
-                    WHERE id = $1 AND hash = $19 AND audit_log_id = $20
+                    id_type = $5, id_number = $6,
+                    entity_reference_count = $7, organization_person_id = $8,
+                    messaging_info1 = $9, messaging_info2 = $10, messaging_info3 = $11,
+                    messaging_info4 = $12, messaging_info5 = $13, department = $14,
+                    location_id = $15, duplicate_of_person_id = $16,
+                    antecedent_hash = $17, antecedent_audit_log_id = $18,
+                    hash = $19, audit_log_id = $20
+                    WHERE id = $1 AND hash = $21 AND audit_log_id = $22
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_type)
                 .bind(item.display_name.as_str())
                 .bind(item.external_identifier.as_deref())
+                .bind(item.id_type)
+                .bind(item.id_number.as_str())
                 .bind(item.entity_reference_count)
                 .bind(item.organization_person_id)
                 .bind(item.messaging_info1.as_deref())
@@ -123,10 +128,11 @@ impl PersonRepositoryImpl {
                 let idx = item.to_index();
                 sqlx::query(
                     r#"
-                    UPDATE person_idx SET 
+                    UPDATE person_idx SET
                     external_identifier_hash = $2,
                     organization_person_id = $3,
-                    duplicate_of_person_id = $4
+                    duplicate_of_person_id = $4,
+                    id_number_hash = $5
                     WHERE id = $1
                     "#,
                 )
@@ -134,6 +140,7 @@ impl PersonRepositoryImpl {
                 .bind(idx.external_identifier_hash)
                 .bind(idx.organization_person_id)
                 .bind(idx.duplicate_of_person_id)
+                .bind(idx.id_number_hash)
                 .execute(&mut **transaction)
                 .await?;
 

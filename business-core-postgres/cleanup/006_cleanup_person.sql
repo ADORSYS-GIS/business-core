@@ -9,5 +9,6 @@ DROP TABLE IF EXISTS person_idx CASCADE;
 DROP TABLE IF EXISTS person_audit CASCADE;
 DROP TABLE IF EXISTS person CASCADE;
 
--- Drop the custom type
+-- Drop the custom types
 DROP TYPE IF EXISTS person_type;
+DROP TYPE IF EXISTS identity_type;

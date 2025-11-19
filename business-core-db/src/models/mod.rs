@@ -6,6 +6,7 @@ pub mod audit;
 pub mod calendar;
 pub mod person;
 pub mod reason_and_purpose;
+pub mod customer;
 
 // Models modules will be added here as needed
 // For example:

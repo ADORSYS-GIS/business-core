@@ -4,7 +4,7 @@ use business_core_db::models::person::country_subdivision::CountrySubdivisionMod
 use business_core_db::models::person::entity_reference::{EntityReferenceModel, RelationshipRole};
 use business_core_db::models::person::locality::LocalityModel;
 use business_core_db::models::person::location::{LocationModel, LocationType};
-use business_core_db::models::person::person::{PersonModel, PersonType};
+use business_core_db::models::person::person::{IdentityType, PersonModel, PersonType};
 use chrono::Utc;
 use heapless::String as HeaplessString;
 use uuid::Uuid;
@@ -83,6 +83,8 @@ pub fn create_test_person(display_name: &str) -> PersonModel {
         person_type: PersonType::Natural,
         display_name: HeaplessString::try_from(display_name).unwrap(),
         external_identifier: None,
+        id_type: IdentityType::NationalId,
+        id_number: HeaplessString::try_from("TEST123456").unwrap(),
         entity_reference_count: 0,
         organization_person_id: None,
         messaging_info1: None,

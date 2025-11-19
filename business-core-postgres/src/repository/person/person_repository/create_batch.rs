@@ -48,14 +48,16 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person_audit
-                    (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                    (id, person_type, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_type)
                 .bind(item.display_name.as_str())
                 .bind(item.external_identifier.as_deref())
+                .bind(item.id_type)
+                .bind(item.id_number.as_str())
                 .bind(item.entity_reference_count)
                 .bind(item.organization_person_id)
                 .bind(item.messaging_info1.as_deref())
@@ -77,14 +79,16 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person
-                    (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                    (id, person_type, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_type)
                 .bind(item.display_name.as_str())
                 .bind(item.external_identifier.as_deref())
+                .bind(item.id_type)
+                .bind(item.id_number.as_str())
                 .bind(item.entity_reference_count)
                 .bind(item.organization_person_id)
                 .bind(item.messaging_info1.as_deref())
@@ -106,14 +110,15 @@ impl PersonRepositoryImpl {
                 let idx = item.to_index();
                 sqlx::query(
                     r#"
-                    INSERT INTO person_idx (id, external_identifier_hash, organization_person_id, duplicate_of_person_id)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO person_idx (id, external_identifier_hash, organization_person_id, duplicate_of_person_id, id_number_hash)
+                    VALUES ($1, $2, $3, $4, $5)
                     "#,
                 )
                 .bind(idx.id)
                 .bind(idx.external_identifier_hash)
                 .bind(idx.organization_person_id)
                 .bind(idx.duplicate_of_person_id)
+                .bind(idx.id_number_hash)
                 .execute(&mut **transaction)
                 .await?;
 
@@ -305,14 +310,16 @@ mod tests {
         sqlx::query(
             r#"
             INSERT INTO person
-            (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            (id, person_type, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             "#,
         )
         .bind(final_person.id)
         .bind(final_person.person_type)
         .bind(final_person.display_name.as_str())
         .bind(final_person.external_identifier.as_deref())
+        .bind(final_person.id_type)
+        .bind(final_person.id_number.as_str())
         .bind(final_person.entity_reference_count)
         .bind(final_person.organization_person_id)
         .bind(final_person.messaging_info1.as_deref())
@@ -332,11 +339,12 @@ mod tests {
         .expect("Failed to insert person");
 
         // Then insert the person index directly into the database using raw SQL
-        sqlx::query("INSERT INTO person_idx (id, external_identifier_hash, organization_person_id, duplicate_of_person_id) VALUES ($1, $2, $3, $4)")
+        sqlx::query("INSERT INTO person_idx (id, external_identifier_hash, organization_person_id, duplicate_of_person_id, id_number_hash) VALUES ($1, $2, $3, $4, $5)")
             .bind(person_idx.id)
             .bind(person_idx.external_identifier_hash)
             .bind(person_idx.organization_person_id)
             .bind(person_idx.duplicate_of_person_id)
+            .bind(person_idx.id_number_hash)
             .execute(&**pool)
             .await
             .expect("Failed to insert person index");
