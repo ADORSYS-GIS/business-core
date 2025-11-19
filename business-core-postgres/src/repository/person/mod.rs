@@ -8,6 +8,7 @@ pub mod risk_summary_repository;
 pub mod activity_log_repository;
 pub mod portfolio_repository;
 pub mod compliance_status_repository;
+pub mod document_repository;
 pub mod factory;
 
 pub use country_repository::CountryRepositoryImpl;
@@ -20,6 +21,7 @@ pub use risk_summary_repository::RiskSummaryRepositoryImpl;
 pub use activity_log_repository::ActivityLogRepositoryImpl;
 pub use portfolio_repository::PortfolioRepositoryImpl;
 pub use compliance_status_repository::ComplianceStatusRepositoryImpl;
+pub use document_repository::DocumentRepositoryImpl;
 pub use factory::{PersonRepoFactory, PersonRepositories};
 
 #[cfg(test)]

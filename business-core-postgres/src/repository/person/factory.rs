@@ -11,7 +11,7 @@ use business_core_db::models::person::{
     entity_reference::EntityReferenceIdxModel,
     risk_summary::RiskSummaryIdxModel,
 };
-use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl, EntityReferenceRepositoryImpl, RiskSummaryRepositoryImpl, ActivityLogRepositoryImpl, PortfolioRepositoryImpl, ComplianceStatusRepositoryImpl};
+use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl, EntityReferenceRepositoryImpl, RiskSummaryRepositoryImpl, ActivityLogRepositoryImpl, PortfolioRepositoryImpl, ComplianceStatusRepositoryImpl, DocumentRepositoryImpl};
 
 /// Factory for creating person module repositories
 ///
@@ -214,6 +214,15 @@ impl PersonRepoFactory {
         repo
     }
 
+    /// Build a DocumentRepository with the given executor
+    pub fn build_document_repo(&self, session: &impl UnitOfWorkSession) -> Arc<DocumentRepositoryImpl> {
+        let repo = Arc::new(DocumentRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all person repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> PersonRepositories {
         PersonRepositories {
@@ -227,6 +236,7 @@ impl PersonRepoFactory {
             activity_log_repository: self.build_activity_log_repo(session),
             portfolio_repository: self.build_portfolio_repo(session),
             compliance_status_repository: self.build_compliance_status_repo(session),
+            document_repository: self.build_document_repo(session),
         }
     }
 }
@@ -243,4 +253,5 @@ pub struct PersonRepositories {
     pub activity_log_repository: Arc<ActivityLogRepositoryImpl>,
     pub portfolio_repository: Arc<PortfolioRepositoryImpl>,
     pub compliance_status_repository: Arc<ComplianceStatusRepositoryImpl>,
+    pub document_repository: Arc<DocumentRepositoryImpl>,
 }
