@@ -69,6 +69,7 @@ where
         EntityType::Person => "Person",
         EntityType::EntityReference => "EntityReference",
         EntityType::ReasonReference => "ReasonReference",
+        EntityType::ActivityLog => "ActivityLog",
     })
 }
 

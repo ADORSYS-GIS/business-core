@@ -8,6 +8,7 @@ pub enum EntityType {
     Person,
     EntityReference,
     ReasonReference,
+    ActivityLog,
 }
 
 impl From<EntityType> for &str {
@@ -17,6 +18,7 @@ impl From<EntityType> for &str {
             EntityType::Person => "PERSON",
             EntityType::EntityReference => "ENTITY_REFERENCE",
             EntityType::ReasonReference => "REASON_REFERENCE",
+            EntityType::ActivityLog => "ACTIVITY_LOG",
         }
     }
 }

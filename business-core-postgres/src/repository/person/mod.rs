@@ -5,6 +5,7 @@ pub mod location_repository;
 pub mod person_repository;
 pub mod entity_reference_repository;
 pub mod risk_summary_repository;
+pub mod activity_log_repository;
 pub mod factory;
 
 pub use country_repository::CountryRepositoryImpl;
@@ -14,6 +15,7 @@ pub use location_repository::LocationRepositoryImpl;
 pub use person_repository::PersonRepositoryImpl;
 pub use entity_reference_repository::EntityReferenceRepositoryImpl;
 pub use risk_summary_repository::RiskSummaryRepositoryImpl;
+pub use activity_log_repository::ActivityLogRepositoryImpl;
 pub use factory::{PersonRepoFactory, PersonRepositories};
 
 #[cfg(test)]
