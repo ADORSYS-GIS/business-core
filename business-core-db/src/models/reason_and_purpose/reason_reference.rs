@@ -70,6 +70,7 @@ where
         EntityType::EntityReference => "EntityReference",
         EntityType::ReasonReference => "ReasonReference",
         EntityType::ActivityLog => "ActivityLog",
+        EntityType::Portfolio => "Portfolio",
     })
 }
 
@@ -83,6 +84,8 @@ where
         "Person" => Ok(EntityType::Person),
         "EntityReference" => Ok(EntityType::EntityReference),
         "ReasonReference" => Ok(EntityType::ReasonReference),
+        "ActivityLog" => Ok(EntityType::ActivityLog),
+        "Portfolio" => Ok(EntityType::Portfolio),
         _ => Err(serde::de::Error::custom(format!("Unknown entity type: {s}"))),
     }
 }

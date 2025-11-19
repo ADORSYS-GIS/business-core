@@ -11,7 +11,7 @@ use business_core_db::models::person::{
     entity_reference::EntityReferenceIdxModel,
     risk_summary::RiskSummaryIdxModel,
 };
-use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl, EntityReferenceRepositoryImpl, RiskSummaryRepositoryImpl, ActivityLogRepositoryImpl};
+use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl, EntityReferenceRepositoryImpl, RiskSummaryRepositoryImpl, ActivityLogRepositoryImpl, PortfolioRepositoryImpl};
 
 /// Factory for creating person module repositories
 ///
@@ -196,6 +196,15 @@ impl PersonRepoFactory {
         repo
     }
 
+    /// Build a PortfolioRepository with the given executor
+    pub fn build_portfolio_repo(&self, session: &impl UnitOfWorkSession) -> Arc<PortfolioRepositoryImpl> {
+        let repo = Arc::new(PortfolioRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all person repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> PersonRepositories {
         PersonRepositories {
@@ -207,6 +216,7 @@ impl PersonRepoFactory {
             entity_reference_repository: self.build_entity_reference_repo(session),
             risk_summary_repository: self.build_risk_summary_repo(session),
             activity_log_repository: self.build_activity_log_repo(session),
+            portfolio_repository: self.build_portfolio_repo(session),
         }
     }
 }
@@ -221,4 +231,5 @@ pub struct PersonRepositories {
     pub entity_reference_repository: Arc<EntityReferenceRepositoryImpl>,
     pub risk_summary_repository: Arc<RiskSummaryRepositoryImpl>,
     pub activity_log_repository: Arc<ActivityLogRepositoryImpl>,
+    pub portfolio_repository: Arc<PortfolioRepositoryImpl>,
 }
