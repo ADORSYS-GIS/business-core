@@ -33,8 +33,8 @@ mod tests {
         let mut reasons = Vec::new();
         for i in 0..3 {
             reasons.push(create_test_reason_with_category(
-                &format!("CAT_TEST_{}", i),
-                &format!("Test Reason {}", i),
+                &format!("CAT_TEST_{i}"),
+                &format!("Test Reason {i}"),
                 test_category,
             ));
         }

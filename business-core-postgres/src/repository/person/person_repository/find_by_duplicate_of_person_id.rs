@@ -39,7 +39,7 @@ mod tests {
         // Create duplicate persons that reference the original
         let mut duplicate_persons = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("duplicate-{}", i));
+            let mut person = create_test_person(&format!("duplicate-{i}"));
             person.duplicate_of_person_id = Some(original_person_id);
             duplicate_persons.push(person);
         }
@@ -92,7 +92,7 @@ mod tests {
         // Create duplicates for original person 1
         let mut duplicates_1 = Vec::new();
         for i in 0..2 {
-            let mut person = create_test_person(&format!("duplicate-of-1-{}", i));
+            let mut person = create_test_person(&format!("duplicate-of-1-{i}"));
             person.duplicate_of_person_id = Some(original_person_id_1);
             duplicates_1.push(person);
         }
@@ -101,7 +101,7 @@ mod tests {
         // Create duplicates for original person 2
         let mut duplicates_2 = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("duplicate-of-2-{}", i));
+            let mut person = create_test_person(&format!("duplicate-of-2-{i}"));
             person.duplicate_of_person_id = Some(original_person_id_2);
             duplicates_2.push(person);
         }
@@ -138,7 +138,7 @@ mod tests {
         // Create persons that are not duplicates (None)
         let mut non_duplicate_persons = Vec::new();
         for i in 0..2 {
-            let mut person = create_test_person(&format!("unique-person-{}", i));
+            let mut person = create_test_person(&format!("unique-person-{i}"));
             person.duplicate_of_person_id = None;
             non_duplicate_persons.push(person);
         }
@@ -147,7 +147,7 @@ mod tests {
         // Create duplicate persons
         let mut duplicate_persons = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("duplicate-person-{}", i));
+            let mut person = create_test_person(&format!("duplicate-person-{i}"));
             person.duplicate_of_person_id = Some(original_person_id);
             duplicate_persons.push(person);
         }

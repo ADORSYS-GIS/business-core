@@ -64,8 +64,8 @@ mod tests {
         let mut countries = Vec::new();
         for i in 0..5 {
             let country = create_test_country(
-                &format!("L{}", i),
-                &format!("Test Country {}", i),
+                &format!("L{i}"),
+                &format!("Test Country {i}"),
             );
             countries.push(country);
         }

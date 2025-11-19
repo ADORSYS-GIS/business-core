@@ -113,8 +113,8 @@ mod tests {
         for i in 0..5 {
             let locality = create_test_locality(
                 subdivision_id,
-                &format!("LOC{}", i),
-                &format!("Test Locality {}", i),
+                &format!("LOC{i}"),
+                &format!("Test Locality {i}"),
             );
             localities.push(locality);
         }

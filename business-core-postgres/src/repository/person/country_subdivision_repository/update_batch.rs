@@ -95,8 +95,8 @@ mod tests {
         for i in 0..3 {
             let subdivision = create_test_country_subdivision(
                 country_id,
-                &format!("UPD{}", i),
-                &format!("Update Test {}", i),
+                &format!("UPD{i}"),
+                &format!("Update Test {i}"),
             );
             subdivisions.push(subdivision);
         }

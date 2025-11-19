@@ -43,7 +43,7 @@ mod tests {
         let mut metadata_items = Vec::new();
         for i in 0..3 {
             let metadata = create_test_compliance_metadata(
-                Some(&format!("EXIST-{}", i)),
+                Some(&format!("EXIST-{i}")),
                 true,
                 false,
             );
@@ -63,12 +63,12 @@ mod tests {
         // First 3 should exist
         for i in 0..3 {
             assert_eq!(exist_results[i].0, saved_items[i].id);
-            assert_eq!(exist_results[i].1, true);
+            assert!(exist_results[i].1);
         }
 
         // Last one should not exist
         assert_eq!(exist_results[3].0, non_existent_id);
-        assert_eq!(exist_results[3].1, false);
+        assert!(!exist_results[3].1);
 
         Ok(())
     }

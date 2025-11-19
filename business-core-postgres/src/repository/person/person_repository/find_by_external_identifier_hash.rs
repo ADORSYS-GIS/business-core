@@ -37,7 +37,7 @@ mod tests {
         
         let mut persons = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("person-{}", i));
+            let mut person = create_test_person(&format!("person-{i}"));
             person.external_identifier = Some(heapless::String::try_from(external_id.as_str()).unwrap());
             persons.push(person);
         }
@@ -87,7 +87,7 @@ mod tests {
         // Create persons with identifier 1
         let mut persons_1 = Vec::new();
         for i in 0..2 {
-            let mut person = create_test_person(&format!("person-id1-{}", i));
+            let mut person = create_test_person(&format!("person-id1-{i}"));
             person.external_identifier = Some(heapless::String::try_from(external_id_1.as_str()).unwrap());
             persons_1.push(person);
         }
@@ -96,7 +96,7 @@ mod tests {
         // Create persons with identifier 2
         let mut persons_2 = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("person-id2-{}", i));
+            let mut person = create_test_person(&format!("person-id2-{i}"));
             person.external_identifier = Some(heapless::String::try_from(external_id_2.as_str()).unwrap());
             persons_2.push(person);
         }
@@ -128,7 +128,7 @@ mod tests {
         // Create persons without external identifier (None)
         let mut persons_without_id = Vec::new();
         for i in 0..2 {
-            let mut person = create_test_person(&format!("person-no-id-{}", i));
+            let mut person = create_test_person(&format!("person-no-id-{i}"));
             person.external_identifier = None;
             persons_without_id.push(person);
         }
@@ -140,7 +140,7 @@ mod tests {
         
         let mut persons_with_id = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("person-with-id-{}", i));
+            let mut person = create_test_person(&format!("person-with-id-{i}"));
             person.external_identifier = Some(heapless::String::try_from(external_id.as_str()).unwrap());
             persons_with_id.push(person);
         }

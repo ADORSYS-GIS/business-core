@@ -117,8 +117,8 @@ mod tests {
         let mut reasons = Vec::new();
         for i in 0..3 {
             reasons.push(create_test_reason(
-                &format!("UPDATE_TEST_{}", i),
-                &format!("Update Test Reason {}", i),
+                &format!("UPDATE_TEST_{i}"),
+                &format!("Update Test Reason {i}"),
             ));
         }
 

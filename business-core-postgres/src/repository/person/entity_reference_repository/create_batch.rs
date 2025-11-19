@@ -177,7 +177,7 @@ mod tests {
 
         let mut entity_references = Vec::new();
         for i in 0..5 {
-            let entity_reference = create_test_entity_reference(person_id, &format!("REF-{}", i));
+            let entity_reference = create_test_entity_reference(person_id, &format!("REF-{i}"));
             entity_references.push(entity_reference);
         }
 

@@ -31,7 +31,7 @@ mod tests {
         
         let mut reasons = Vec::new();
         for i in 0..3 {
-            reasons.push(create_test_reason(test_code, &format!("Test Reason {}", i)));
+            reasons.push(create_test_reason(test_code, &format!("Test Reason {i}")));
         }
 
         let saved = reason_repo.create_batch(reasons, None).await?;

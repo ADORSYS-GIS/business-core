@@ -3,6 +3,7 @@ pub mod identifiable;
 pub mod index;
 pub mod index_aware;
 pub mod audit;
+pub mod calendar;
 pub mod person;
 pub mod reason_and_purpose;
 

@@ -39,7 +39,7 @@ mod tests {
         // Create test persons belonging to the organization
         let mut persons = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("employee-{}", i));
+            let mut person = create_test_person(&format!("employee-{i}"));
             person.organization_person_id = Some(org_person_id);
             persons.push(person);
         }
@@ -92,7 +92,7 @@ mod tests {
         // Create employees for organization 1
         let mut employees_1 = Vec::new();
         for i in 0..2 {
-            let mut person = create_test_person(&format!("org1-employee-{}", i));
+            let mut person = create_test_person(&format!("org1-employee-{i}"));
             person.organization_person_id = Some(org_person_id_1);
             employees_1.push(person);
         }
@@ -101,7 +101,7 @@ mod tests {
         // Create employees for organization 2
         let mut employees_2 = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("org2-employee-{}", i));
+            let mut person = create_test_person(&format!("org2-employee-{i}"));
             person.organization_person_id = Some(org_person_id_2);
             employees_2.push(person);
         }
@@ -138,7 +138,7 @@ mod tests {
         // Create persons without organization (None)
         let mut persons_without_org = Vec::new();
         for i in 0..2 {
-            let mut person = create_test_person(&format!("independent-person-{}", i));
+            let mut person = create_test_person(&format!("independent-person-{i}"));
             person.organization_person_id = None;
             persons_without_org.push(person);
         }
@@ -147,7 +147,7 @@ mod tests {
         // Create persons with organization
         let mut persons_with_org = Vec::new();
         for i in 0..3 {
-            let mut person = create_test_person(&format!("org-employee-{}", i));
+            let mut person = create_test_person(&format!("org-employee-{i}"));
             person.organization_person_id = Some(org_person_id);
             persons_with_org.push(person);
         }

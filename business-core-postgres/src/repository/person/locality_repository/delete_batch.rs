@@ -80,8 +80,8 @@ mod tests {
         for i in 0..3 {
             let locality = create_test_locality(
                 subdivision_id,
-                &format!("DEL{}", i),
-                &format!("Delete Test {}", i),
+                &format!("DEL{i}"),
+                &format!("Delete Test {i}"),
             );
             localities.push(locality);
         }
