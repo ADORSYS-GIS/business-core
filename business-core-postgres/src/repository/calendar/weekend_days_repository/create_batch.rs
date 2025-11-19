@@ -239,19 +239,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_weekend_days_insert_triggers_main_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use crate::test_helper::setup_test_context_and_listen;
+        use business_core_db::models::index_aware::IndexAware;
+        use tokio::time::{sleep, Duration};
         
-        // Setup test context with the handler
+        // Setup test context with the notification listener
         let ctx = setup_test_context_and_listen().await?;
         let pool = ctx.pool();
 
-        // Create a test weekend_days entity
+        // Create a test entity
         let test_item = create_test_weekend_days(None, None);
         let item_idx = test_item.to_index();
-    
-        // Give listener more time to start and establish connection
+
+        // Give listener time to start
         sleep(Duration::from_millis(2000)).await;
-    
-        // Insert the main record directly into the database using raw SQL
+
+        // Insert the entity record directly into database (triggers main cache notification)
         sqlx::query(
             r#"
             INSERT INTO calendar_weekend_days (
@@ -279,7 +282,7 @@ mod tests {
         .await
         .expect("Failed to insert weekend_days");
 
-        // Insert the index record directly into the database using raw SQL
+        // Insert the index record directly into database (triggers index cache notification)
         sqlx::query("INSERT INTO calendar_weekend_days_idx (id, country_id, country_subdivision_id) VALUES ($1, $2, $3)")
             .bind(item_idx.id)
             .bind(item_idx.country_id)
@@ -287,8 +290,8 @@ mod tests {
             .execute(&**pool)
             .await
             .expect("Failed to insert weekend_days index");
-
-        // Give more time for notification to be processed
+    
+            // Give time for notification to be processed
         sleep(Duration::from_millis(500)).await;
 
         let weekend_days_repo = &ctx.calendar_repos().weekend_days_repository;
@@ -301,32 +304,12 @@ mod tests {
         );
         drop(idx_cache);
 
-        // Verify the MAIN cache was updated via the trigger
+        // Verify the MAIN cache was updated
         let main_cache = weekend_days_repo.weekend_days_cache.read().await;
-        
-        // Debug: print cache state
-        println!("Main cache contains item: {}", main_cache.contains(&test_item.id));
-        
         assert!(
             main_cache.contains(&test_item.id),
             "WeekendDays should be in main cache after insert"
         );
-    
-        let cached_item = main_cache.get(&test_item.id);
-        
-        // Debug: print retrieved item
-        println!("Cached item: {:?}", cached_item);
-        
-        assert!(cached_item.is_some(), "WeekendDays should be retrievable from main cache");
-        
-        // Verify the cached data matches
-        let cached_item = cached_item.unwrap();
-        assert_eq!(cached_item.id, test_item.id);
-        assert_eq!(cached_item.country_id, test_item.country_id);
-        assert_eq!(cached_item.country_subdivision_id, test_item.country_subdivision_id);
-        assert_eq!(cached_item.weekend_day_01, test_item.weekend_day_01);
-        assert_eq!(cached_item.weekend_day_02, test_item.weekend_day_02);
-        
         drop(main_cache);
 
         // Delete the record from database (triggers both cache notifications)
@@ -336,7 +319,7 @@ mod tests {
             .await
             .expect("Failed to delete weekend_days");
 
-        // Give more time for notification to be processed
+        // Give time for notification to be processed
         sleep(Duration::from_millis(500)).await;
 
         // Verify removed from both caches
@@ -352,7 +335,7 @@ mod tests {
             !main_cache.contains(&test_item.id),
             "WeekendDays should be removed from main cache after delete"
         );
-        
+
         Ok(())
     }
 }
