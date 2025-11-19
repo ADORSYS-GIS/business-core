@@ -9,3 +9,4 @@ pub mod common_enums;
 pub mod activity_log;
 pub mod portfolio;
 pub mod risk_summary;
+pub mod compliance_status;

@@ -71,6 +71,7 @@ where
         EntityType::ReasonReference => "ReasonReference",
         EntityType::ActivityLog => "ActivityLog",
         EntityType::Portfolio => "Portfolio",
+        EntityType::ComplianceStatus => "ComplianceStatus",
     })
 }
 
