@@ -119,8 +119,8 @@ mod tests {
         let mut reasons = Vec::new();
         for i in 0..5 {
             let reason = create_test_reason(
-                &format!("TEST_CODE_{}", i),
-                &format!("Test Reason {}", i),
+                &format!("TEST_CODE_{i}"),
+                &format!("Test Reason {i}"),
             );
             reasons.push(reason);
         }
@@ -158,7 +158,7 @@ mod tests {
         // Create a test reason with a unique code to avoid conflicts
         let unique_code = {
             let uuid = uuid::Uuid::new_v4();
-            format!("TEST_{}", uuid)
+            format!("TEST_{uuid}")
         };
         let test_reason = create_test_reason(&unique_code, "Test Reason");
         let reason_idx = test_reason.to_index();

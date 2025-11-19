@@ -33,7 +33,7 @@ mod tests {
         let item2 = create_test_weekend_days(Some(country_id), None);
         let item3 = create_test_weekend_days(None, None);
         
-        let saved = weekend_days_repo.create_batch(vec![item1, item2, item3], None).await?;
+        let _saved = weekend_days_repo.create_batch(vec![item1, item2, item3], None).await?;
 
         let found_items = weekend_days_repo.find_by_country_id(country_id).await?;
         

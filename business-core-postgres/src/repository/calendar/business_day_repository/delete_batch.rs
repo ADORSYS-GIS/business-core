@@ -1,10 +1,8 @@
-use business_core_db::models::calendar::business_day::BusinessDayModel;
 use business_core_db::repository::delete_batch::DeleteBatch;
 use super::repo_impl::BusinessDayRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
-use sqlx::Postgres;
 
 #[async_trait]
 impl DeleteBatch<sqlx::Postgres> for BusinessDayRepositoryImpl {

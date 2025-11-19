@@ -149,7 +149,7 @@ mod tests {
         for i in 0..3 {
             let location = create_test_location(
                 locality_id,
-                &format!("{} Sunset Blvd", i),
+                &format!("{i} Sunset Blvd"),
             );
             locations.push(location);
         }

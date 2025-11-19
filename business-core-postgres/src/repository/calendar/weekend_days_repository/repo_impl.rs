@@ -1,4 +1,4 @@
-use business_core_db::models::calendar::weekend_days::{WeekendDaysIdxModel, WeekendDaysModel, Weekday};
+use business_core_db::models::calendar::weekend_days::{WeekendDaysIdxModel, WeekendDaysModel};
 use crate::utils::TryFromRow;
 use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
 use postgres_index_cache::{TransactionAwareIdxModelCache, TransactionAwareMainModelCache};

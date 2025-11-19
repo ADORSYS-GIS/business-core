@@ -45,8 +45,8 @@ mod tests {
         for i in 0..3 {
             let locality = create_test_locality(
                 subdivision_id,
-                &format!("CID{}", i),
-                &format!("Subdivision ID Test {}", i),
+                &format!("CID{i}"),
+                &format!("Subdivision ID Test {i}"),
             );
             localities.push(locality);
         }

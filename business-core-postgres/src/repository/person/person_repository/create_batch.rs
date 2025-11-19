@@ -188,7 +188,7 @@ mod tests {
         let mut persons = Vec::new();
         for i in 0..5 {
             let person = create_test_person(
-                &format!("Person {}", i),
+                &format!("Person {i}"),
                 PersonType::Natural,
             );
             persons.push(person);
@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(saved_persons.len(), 5);
 
         for (i, saved_person) in saved_persons.iter().enumerate() {
-            assert_eq!(saved_person.display_name.as_str(), format!("Person {}", i));
+            assert_eq!(saved_person.display_name.as_str(), format!("Person {i}"));
             assert_eq!(saved_person.person_type, PersonType::Natural);
             assert!(saved_person.audit_log_id.is_some());
             assert_eq!(saved_person.audit_log_id.unwrap(), audit_log.id);
@@ -237,9 +237,9 @@ mod tests {
         let mut persons = Vec::new();
         for i in 0..3 {
             let person = create_test_person_with_external_id(
-                &format!("Employee {}", i),
+                &format!("Employee {i}"),
                 PersonType::Natural,
-                &format!("EMP{:03}", i),
+                &format!("EMP{i:03}"),
             );
             persons.push(person);
         }
@@ -254,7 +254,7 @@ mod tests {
             assert!(saved_person.external_identifier.is_some());
             assert_eq!(
                 saved_person.external_identifier.as_ref().unwrap().as_str(),
-                format!("EMP{:03}", i)
+                format!("EMP{i:03}")
             );
         }
 

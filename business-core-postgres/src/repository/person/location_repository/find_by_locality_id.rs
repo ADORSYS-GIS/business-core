@@ -55,7 +55,7 @@ mod tests {
         // Create test locations belonging to the locality
         let mut locations = Vec::new();
         for i in 0..3 {
-            let location = create_test_location(locality_id, &format!("location-{}", i));
+            let location = create_test_location(locality_id, &format!("location-{i}"));
             locations.push(location);
         }
 

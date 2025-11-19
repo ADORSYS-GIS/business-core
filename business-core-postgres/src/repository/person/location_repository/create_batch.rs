@@ -202,7 +202,7 @@ mod tests {
 
         let mut locations = Vec::new();
         for i in 0..5 {
-            let location = create_test_location(locality_id, &format!("{} Main St", i));
+            let location = create_test_location(locality_id, &format!("{i} Main St"));
             locations.push(location);
         }
 

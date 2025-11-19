@@ -1,11 +1,10 @@
-use business_core_db::models::calendar::date_calculation_rules::{DateCalculationRulesModel, DateRulePurpose, DateShiftRule};
-use chrono::NaiveDate;
-use uuid::Uuid;
 
 #[cfg(test)]
 pub mod test_utils {
-    use super::*;
+    use business_core_db::models::calendar::date_calculation_rules::{DateCalculationRulesModel, DateRulePurpose, DateShiftRule};
+    use chrono::NaiveDate;
     use heapless::String as HeaplessString;
+    use uuid::Uuid;
 
     pub fn create_test_date_calculation_rule(
         country_id: Uuid,

@@ -72,7 +72,7 @@ mod tests {
         let mut metadata_items = Vec::new();
         for i in 0..3 {
             let metadata = create_test_compliance_metadata(
-                Some(&format!("DELETE-{}", i)),
+                Some(&format!("DELETE-{i}")),
                 true,
                 false,
             );

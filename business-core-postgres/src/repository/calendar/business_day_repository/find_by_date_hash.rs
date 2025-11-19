@@ -36,7 +36,7 @@ mod tests {
         let item2 = create_test_business_day_with_date(test_date);
         let item3 = create_test_business_day_with_date(NaiveDate::from_ymd_opt(2024, 1, 16).unwrap());
         
-        let saved = business_day_repo.create_batch(vec![item1, item2, item3], None).await?;
+        let _saved = business_day_repo.create_batch(vec![item1, item2, item3], None).await?;
 
         let found_items = business_day_repo.find_by_date_hash(date_hash).await?;
         

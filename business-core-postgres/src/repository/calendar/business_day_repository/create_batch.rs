@@ -1,12 +1,10 @@
 use business_core_db::models::calendar::business_day::BusinessDayModel;
 use business_core_db::models::index_aware::IndexAware;
 use business_core_db::repository::create_batch::CreateBatch;
-use crate::utils::TryFromRow;
 use super::repo_impl::BusinessDayRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
-use sqlx::Postgres;
 
 #[async_trait]
 impl CreateBatch<sqlx::Postgres, BusinessDayModel> for BusinessDayRepositoryImpl {

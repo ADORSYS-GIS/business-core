@@ -204,7 +204,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     let pool_clone = pool.clone();
     let listen_handle = tokio::spawn(async move {
         // The listener will run until aborted
-        let _ = listener.listen(&*pool_clone).await;
+        let _ = listener.listen(&pool_clone).await;
     });
 
     Ok(TestContext {
@@ -215,6 +215,15 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
         pool,
         listener_handle: Some(listen_handle),
     })
+}
+use rand::{distributions::Alphanumeric, Rng};
+
+pub fn random(n: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(n)
+        .map(char::from)
+        .collect()
 }
 
 
@@ -248,7 +257,7 @@ mod tests {
                     assert_eq!(loaded.id, test_id);
                 }
                 Err(e) => {
-                    panic!("Expected audit log to exist within transaction, but got error: {}", e);
+                    panic!("Expected audit log to exist within transaction, but got error: {e}");
                 }
             }
         } // Transaction is rolled back here when ctx is dropped
@@ -271,13 +280,4 @@ mod tests {
         
         Ok(())
     }
-}
-use rand::{distributions::Alphanumeric, Rng};
-
-pub fn random(n: usize) -> String {
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(n)
-        .map(char::from)
-        .collect()
 }

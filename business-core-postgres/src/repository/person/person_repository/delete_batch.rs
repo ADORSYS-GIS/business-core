@@ -136,7 +136,7 @@ mod tests {
         let mut persons = Vec::new();
         for i in 0..3 {
             let person = create_test_person(
-                &format!("Person to Delete {}", i),
+                &format!("Person to Delete {i}"),
                 PersonType::System,
             );
             persons.push(person);

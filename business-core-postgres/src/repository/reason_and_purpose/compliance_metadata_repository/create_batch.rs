@@ -111,7 +111,7 @@ mod tests {
         let mut metadata_items = Vec::new();
         for i in 0..5 {
             let metadata = create_test_compliance_metadata(
-                Some(&format!("FATF-R.{}", i)),
+                Some(&format!("FATF-R.{i}")),
                 true,
                 false,
             );

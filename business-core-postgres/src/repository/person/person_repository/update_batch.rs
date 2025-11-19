@@ -205,7 +205,7 @@ mod tests {
         let mut persons = Vec::new();
         for i in 0..3 {
             let person = create_test_person(
-                &format!("Original Person {}", i),
+                &format!("Original Person {i}"),
                 PersonType::Natural,
             );
             persons.push(person);

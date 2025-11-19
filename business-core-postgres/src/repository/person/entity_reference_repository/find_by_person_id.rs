@@ -41,7 +41,7 @@ mod tests {
         for i in 0..3 {
             let entity_ref = create_test_entity_reference(
                 person_id,
-                &format!("external-ref-{}", i),
+                &format!("external-ref-{i}"),
             );
             entity_references.push(entity_ref);
         }
@@ -99,7 +99,7 @@ mod tests {
         for i in 0..2 {
             entity_refs_1.push(create_test_entity_reference(
                 person_id_1,
-                &format!("person1-ref-{}", i),
+                &format!("person1-ref-{i}"),
             ));
         }
         entity_reference_repo.create_batch(entity_refs_1, Some(audit_log.id)).await?;
@@ -109,7 +109,7 @@ mod tests {
         for i in 0..3 {
             entity_refs_2.push(create_test_entity_reference(
                 person_id_2,
-                &format!("person2-ref-{}", i),
+                &format!("person2-ref-{i}"),
             ));
         }
         entity_reference_repo.create_batch(entity_refs_2, Some(audit_log.id)).await?;

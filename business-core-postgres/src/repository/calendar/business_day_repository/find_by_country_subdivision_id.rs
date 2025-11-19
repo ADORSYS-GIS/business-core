@@ -33,7 +33,7 @@ mod tests {
         let item2 = create_test_business_day(None, Some(subdivision_id));
         let item3 = create_test_business_day(None, None);
         
-        let saved = business_day_repo.create_batch(vec![item1, item2, item3], None).await?;
+        let _saved = business_day_repo.create_batch(vec![item1, item2, item3], None).await?;
 
         let found_items = business_day_repo.find_by_country_subdivision_id(subdivision_id).await?;
         

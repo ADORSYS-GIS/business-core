@@ -153,9 +153,10 @@ mod tests {
         let expected_hash = hash_as_i64(&external_id).unwrap();
         
         // Create entity references with same hash but different persons
-        let mut entity_refs = Vec::new();
-        entity_refs.push(create_test_entity_reference(person_id_1, external_id));
-        entity_refs.push(create_test_entity_reference(person_id_2, external_id));
+        let entity_refs = vec![
+            create_test_entity_reference(person_id_1, external_id),
+            create_test_entity_reference(person_id_2, external_id),
+        ];
         
         entity_reference_repo.create_batch(entity_refs, Some(audit_log.id)).await?;
 

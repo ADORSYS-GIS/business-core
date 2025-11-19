@@ -1,5 +1,5 @@
-use business_core_db::models::calendar::business_day::{BusinessDayIdxModel, BusinessDayModel, Weekday, DayScope};
-use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
+use business_core_db::models::calendar::business_day::{BusinessDayIdxModel, BusinessDayModel};
+use crate::utils::{get_optional_heapless_string, TryFromRow};
 use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
 use postgres_index_cache::{TransactionAwareIdxModelCache, TransactionAwareMainModelCache};
 use parking_lot::RwLock as ParkingRwLock;

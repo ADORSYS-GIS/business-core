@@ -38,8 +38,8 @@ mod tests {
         for i in 0..3 {
             let subdivision = create_test_country_subdivision(
                 country_id,
-                &format!("CID{}", i),
-                &format!("Country ID Test {}", i),
+                &format!("CID{i}"),
+                &format!("Country ID Test {i}"),
             );
             subdivisions.push(subdivision);
         }

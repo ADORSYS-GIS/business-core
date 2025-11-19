@@ -98,8 +98,8 @@ mod tests {
         let mut countries = Vec::new();
         for i in 0..5 {
             let country = create_test_country(
-                &format!("C{}", i),
-                &format!("Test Country {}", i),
+                &format!("C{i}"),
+                &format!("Test Country {i}"),
             );
             countries.push(country);
         }
@@ -140,7 +140,7 @@ mod tests {
             let uuid_bytes = uuid.as_bytes();
             let char1 = (b'A' + (uuid_bytes[0] % 26)) as char;
             let char2 = (b'A' + (uuid_bytes[1] % 26)) as char;
-            format!("{}{}", char1, char2)
+            format!("{char1}{char2}")
         };
         let test_country = create_test_country(&unique_iso2[..2], "Test Country");
         let country_idx = test_country.to_index();

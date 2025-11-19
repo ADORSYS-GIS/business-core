@@ -1,10 +1,8 @@
-use business_core_db::models::calendar::date_calculation_rules::DateCalculationRulesModel;
 use business_core_db::repository::delete_batch::DeleteBatch;
 use super::repo_impl::DateCalculationRulesRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
-use sqlx::Postgres;
 
 #[async_trait]
 impl DeleteBatch<sqlx::Postgres> for DateCalculationRulesRepositoryImpl {

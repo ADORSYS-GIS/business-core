@@ -98,7 +98,7 @@ mod tests {
         let mut metadata_items = Vec::new();
         for i in 0..3 {
             let metadata = create_test_compliance_metadata(
-                Some(&format!("UPDATE-{}", i)),
+                Some(&format!("UPDATE-{i}")),
                 true,
                 false,
             );
@@ -121,8 +121,8 @@ mod tests {
         assert_eq!(result.len(), 3);
 
         for updated_item in result {
-            assert_eq!(updated_item.reportable, false);
-            assert_eq!(updated_item.requires_sar, true);
+            assert!(!updated_item.reportable);
+            assert!(updated_item.requires_sar);
             assert_eq!(updated_item.regulatory_code.as_ref().unwrap().as_str(), "UPDATED");
         }
 

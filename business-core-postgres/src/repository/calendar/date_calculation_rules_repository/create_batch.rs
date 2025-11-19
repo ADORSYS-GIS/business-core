@@ -1,12 +1,10 @@
 use business_core_db::models::calendar::date_calculation_rules::DateCalculationRulesModel;
 use business_core_db::models::index_aware::IndexAware;
 use business_core_db::repository::create_batch::CreateBatch;
-use crate::utils::TryFromRow;
 use super::repo_impl::DateCalculationRulesRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
-use sqlx::Postgres;
 
 #[async_trait]
 impl CreateBatch<sqlx::Postgres, DateCalculationRulesModel> for DateCalculationRulesRepositoryImpl {

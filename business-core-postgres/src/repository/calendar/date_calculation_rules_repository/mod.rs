@@ -8,6 +8,7 @@ mod find_by_country_id;
 mod find_by_country_subdivision_id;
 mod find_by_rule_name_hash;
 mod test_utils;
+pub use repo_impl::DateCalculationRulesRepositoryImpl;
 
 
 #[cfg(test)]
@@ -262,4 +263,3 @@ mod tests {
         Ok(())
     }
 }
-pub use repo_impl::DateCalculationRulesRepositoryImpl;

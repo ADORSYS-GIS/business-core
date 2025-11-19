@@ -5,7 +5,6 @@ use super::repo_impl::DateCalculationRulesRepositoryImpl;
 use async_trait::async_trait;
 use std::error::Error;
 use uuid::Uuid;
-use sqlx::Postgres;
 
 #[async_trait]
 impl LoadBatch<sqlx::Postgres, DateCalculationRulesModel> for DateCalculationRulesRepositoryImpl {

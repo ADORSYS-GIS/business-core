@@ -36,8 +36,8 @@ mod tests {
         let mut reasons = Vec::new();
         for i in 0..3 {
             reasons.push(create_test_reason_with_compliance_metadata(
-                &format!("COMPLIANCE_TEST_{}", i),
-                &format!("Test Reason {}", i),
+                &format!("COMPLIANCE_TEST_{i}"),
+                &format!("Test Reason {i}"),
                 Some(compliance_metadata_id),
             ));
         }
