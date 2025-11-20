@@ -93,6 +93,15 @@ pub struct ComplianceStatusModel {
     /// Date of last screening (optional)
     pub last_screening_date: Option<DateTime<Utc>>,
     
+    /// First predecessor reference (nullable)
+    pub predecessor_1: Option<Uuid>,
+    
+    /// Second predecessor reference (nullable)
+    pub predecessor_2: Option<Uuid>,
+    
+    /// Third predecessor reference (nullable)
+    pub predecessor_3: Option<Uuid>,
+    
     /// Hash from the previous audit record for chain verification (0 for initial create)
     pub antecedent_hash: i64,
     

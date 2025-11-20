@@ -43,8 +43,8 @@ impl ComplianceStatusRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_compliance_status_audit
-                (id, person_id, kyc_status, sanctions_checked, last_screening_date, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, kyc_status, sanctions_checked, last_screening_date, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(entity.id)
@@ -52,6 +52,9 @@ impl ComplianceStatusRepositoryImpl {
             .bind(entity.kyc_status)
             .bind(entity.sanctions_checked)
             .bind(entity.last_screening_date)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
@@ -61,8 +64,8 @@ impl ComplianceStatusRepositoryImpl {
             let entity_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_compliance_status
-                (id, person_id, kyc_status, sanctions_checked, last_screening_date, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, kyc_status, sanctions_checked, last_screening_date, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(entity.id)
@@ -70,6 +73,9 @@ impl ComplianceStatusRepositoryImpl {
             .bind(entity.kyc_status)
             .bind(entity.sanctions_checked)
             .bind(entity.last_screening_date)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
