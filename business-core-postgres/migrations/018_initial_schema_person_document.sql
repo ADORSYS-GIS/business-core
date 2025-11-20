@@ -39,12 +39,12 @@ CREATE TABLE IF NOT EXISTS person_document_audit (
     PRIMARY KEY (id, audit_log_id)
 );
 
--- Index on audit_log_id for efficient audit log queries.
+-- Index on id for efficient audit queries by entity ID.
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_person_document_audit_audit_log_id
-    ON person_document_audit(audit_log_id);
+CREATE INDEX IF NOT EXISTS idx_person_document_audit_id
+    ON person_document_audit(id);
 
 -- Update entity_type enum to include DOCUMENT
 -- Note: This assumes the entity_type enum exists from the audit schema migration

@@ -22,6 +22,7 @@ pub enum LocationType {
     Other,
 }
 
+/// # Audit
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct LocationModel {
     pub id: Uuid,

@@ -59,12 +59,12 @@ CREATE TABLE IF NOT EXISTS entity_reference_audit (
     PRIMARY KEY (id, audit_log_id)
 );
 
--- Index on audit_log_id for efficient audit log queries.
+-- Index on id for efficient audit queries by entity ID.
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_entity_reference_audit_audit_log_id
-    ON entity_reference_audit(audit_log_id);
+CREATE INDEX IF NOT EXISTS idx_entity_reference_audit_id
+    ON entity_reference_audit(id);
 
 -- Create trigger for entity_reference_idx table to notify listeners of changes
 DROP TRIGGER IF EXISTS entity_reference_idx_notify ON entity_reference_idx;
