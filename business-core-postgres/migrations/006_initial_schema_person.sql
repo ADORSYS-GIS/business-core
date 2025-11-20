@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS person (
     department VARCHAR(50),
     location_id UUID,
     duplicate_of_person_id UUID,
+    last_activity_log UUID,
+    last_compliance_status UUID,
+    last_document UUID,
+    last_portfolio UUID,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -68,6 +72,10 @@ CREATE TABLE IF NOT EXISTS person_audit (
     department VARCHAR(50),
     location_id UUID,
     duplicate_of_person_id UUID,
+    last_activity_log UUID,
+    last_compliance_status UUID,
+    last_document UUID,
+    last_portfolio UUID,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,

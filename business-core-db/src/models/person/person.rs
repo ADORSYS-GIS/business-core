@@ -130,6 +130,11 @@ pub struct PersonModel {
     /// References PersonModel.id for duplicate tracking
     pub duplicate_of_person_id: Option<Uuid>,
 
+    pub last_activity_log: Option<Uuid>,
+    pub last_compliance_status: Option<Uuid>,
+    pub last_document: Option<Uuid>,
+    pub last_portfolio: Option<Uuid>,
+
     /// Hash from the previous audit record for chain verification (0 for initial create)
     pub antecedent_hash: i64,
     
