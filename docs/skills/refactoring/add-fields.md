@@ -169,7 +169,35 @@ let rows_affected = sqlx::query(
 
 Similar updates for INSERT queries in the create operation.
 
-#### 3.3 Load Operations (`load_batch.rs`, `load_audits.rs`)
+#### 3.3 Delete Batch (`delete_batch.rs`)
+
+**File**: `business-core-postgres/src/repository/{module}/{entity}_repository/delete_batch.rs`
+
+Update the INSERT query for the audit table (the entity is being deleted, but we record one final audit entry):
+
+```rust
+// Audit insert query
+let audit_insert_query = sqlx::query(
+    r#"
+    INSERT INTO person_document_audit
+    (id, person_id, document_type, document_path, status, expiry_date,
+     antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    "#,
+)
+.bind(final_audit_entity.id)
+.bind(final_audit_entity.person_id)
+.bind(final_audit_entity.document_type.as_str())
+.bind(final_audit_entity.document_path.as_deref())
+.bind(final_audit_entity.status)
+.bind(final_audit_entity.expiry_date)  // NEW FIELD
+.bind(final_audit_entity.antecedent_hash)
+.bind(final_audit_entity.antecedent_audit_log_id)
+.bind(final_audit_entity.hash)
+.bind(final_audit_entity.audit_log_id);
+```
+
+#### 3.4 Load Operations (`load_batch.rs`, `load_audits.rs`)
 
 If using custom SELECT queries (not `SELECT *`), add the new field to the SELECT clause.
 
@@ -191,6 +219,7 @@ ALTER TABLE person_document_audit ADD COLUMN IF NOT EXISTS expiry_date DATE;
 - [ ] Update the initial schema migration script (both main and audit tables)
 - [ ] Update `update_batch.rs` (INSERT and UPDATE queries)
 - [ ] Update `create_batch.rs` (INSERT queries)
+- [ ] Update `delete_batch.rs` (INSERT queries for audit)
 - [ ] Check `load_batch.rs` and `load_audits.rs` if custom SELECT queries are used
 - [ ] Create an ALTER TABLE migration if the entity already exists in production
 - [ ] Update tests that create test entities with the new field

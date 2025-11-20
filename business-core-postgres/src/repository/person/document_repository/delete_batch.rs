@@ -48,8 +48,8 @@ impl DocumentRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_document_audit
-                (id, person_id, document_type, document_path, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, document_type, document_path, status, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(final_audit_entity.id)
@@ -57,6 +57,9 @@ impl DocumentRepositoryImpl {
             .bind(final_audit_entity.document_type.as_str())
             .bind(final_audit_entity.document_path.as_deref())
             .bind(final_audit_entity.status)
+            .bind(final_audit_entity.predecessor_1)
+            .bind(final_audit_entity.predecessor_2)
+            .bind(final_audit_entity.predecessor_3)
             .bind(final_audit_entity.antecedent_hash)
             .bind(final_audit_entity.antecedent_audit_log_id)
             .bind(final_audit_entity.hash)

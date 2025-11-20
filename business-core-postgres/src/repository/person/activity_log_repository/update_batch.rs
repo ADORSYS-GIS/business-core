@@ -57,13 +57,16 @@ impl ActivityLogRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_activity_log_audit
-                (id, person_id, activity_summary, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (id, person_id, activity_summary, predecessor_1, predecessor_2, predecessor_3, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 "#,
             )
             .bind(entity.id)
             .bind(entity.person_id)
             .bind(entity.activity_summary.as_deref())
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.hash)
             .bind(entity.audit_log_id)
             .bind(entity.antecedent_hash)
@@ -75,22 +78,30 @@ impl ActivityLogRepositoryImpl {
                 UPDATE person_activity_log SET
                     person_id = $2,
                     activity_summary = $3,
-                    hash = $4,
-                    audit_log_id = $5,
-                    antecedent_hash = $6,
-                    antecedent_audit_log_id = $7
+                    predecessor_1 = $4,
+                    predecessor_2 = $5,
+                    predecessor_3 = $6,
+                    hash = $7,
+                    audit_log_id = $8,
+                    antecedent_hash = $9,
+                    antecedent_audit_log_id = $10
                 WHERE id = $1
-                  AND hash = $6
-                  AND audit_log_id = $7
+                  AND hash = $11
+                  AND audit_log_id = $12
                 "#,
             )
             .bind(entity.id)
             .bind(entity.person_id)
             .bind(entity.activity_summary.as_deref())
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.hash)
             .bind(entity.audit_log_id)
             .bind(entity.antecedent_hash)
-            .bind(entity.antecedent_audit_log_id);
+            .bind(entity.antecedent_audit_log_id)
+            .bind(previous_hash)
+            .bind(previous_audit_log_id);
             
             // 7. Create audit link
             let audit_link = AuditLinkModel {

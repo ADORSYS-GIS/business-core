@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS person_activity_log (
     id UUID PRIMARY KEY,
     person_id UUID NOT NULL,
     activity_summary TEXT,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -21,6 +24,9 @@ CREATE TABLE IF NOT EXISTS person_activity_log_audit (
     id UUID NOT NULL,
     person_id UUID NOT NULL,
     activity_summary TEXT,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,

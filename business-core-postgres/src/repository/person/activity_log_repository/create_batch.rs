@@ -43,13 +43,16 @@ impl ActivityLogRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_activity_log_audit
-                (id, person_id, activity_summary, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (id, person_id, activity_summary, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 "#,
             )
             .bind(entity.id)
             .bind(entity.person_id)
             .bind(entity.activity_summary.as_deref())
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
@@ -59,13 +62,16 @@ impl ActivityLogRepositoryImpl {
             let entity_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_activity_log
-                (id, person_id, activity_summary, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (id, person_id, activity_summary, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 "#,
             )
             .bind(entity.id)
             .bind(entity.person_id)
             .bind(entity.activity_summary.as_deref())
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)

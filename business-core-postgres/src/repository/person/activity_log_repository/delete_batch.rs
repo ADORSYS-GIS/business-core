@@ -50,13 +50,16 @@ impl ActivityLogRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_activity_log_audit
-                (id, person_id, activity_summary, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (id, person_id, activity_summary, predecessor_1, predecessor_2, predecessor_3, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 "#,
             )
             .bind(final_audit_entity.id)
             .bind(final_audit_entity.person_id)
             .bind(final_audit_entity.activity_summary.as_deref())
+            .bind(final_audit_entity.predecessor_1)
+            .bind(final_audit_entity.predecessor_2)
+            .bind(final_audit_entity.predecessor_3)
             .bind(final_audit_entity.hash)
             .bind(final_audit_entity.audit_log_id)
             .bind(final_audit_entity.antecedent_hash)
