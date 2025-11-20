@@ -1,12 +1,58 @@
 use heapless::String as HeaplessString;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sqlx::FromRow;
+use std::str::FromStr;
 use uuid::Uuid;
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
 use std::collections::HashMap;
 use crate::{HasPrimaryKey, IdxModelCache, Indexable};
 use crate::models::{Index, IndexAware};
+use crate::models::person::common_enums::{RiskRating, PersonStatus};
+
+/// Database model for identity type enum
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "identity_type", rename_all = "PascalCase")]
+pub enum IdentityType {
+    NationalId,
+    Passport,
+    CompanyRegistration,
+    PermanentResidentCard,
+    AsylumCard,
+    TemporaryResidentPermit,
+    Unknown,
+}
+
+impl std::fmt::Display for IdentityType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IdentityType::NationalId => write!(f, "NationalId"),
+            IdentityType::Passport => write!(f, "Passport"),
+            IdentityType::CompanyRegistration => write!(f, "CompanyRegistration"),
+            IdentityType::PermanentResidentCard => write!(f, "PermanentResidentCard"),
+            IdentityType::AsylumCard => write!(f, "AsylumCard"),
+            IdentityType::TemporaryResidentPermit => write!(f, "TemporaryResidentPermit"),
+            IdentityType::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+impl FromStr for IdentityType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "NationalId" => Ok(IdentityType::NationalId),
+            "Passport" => Ok(IdentityType::Passport),
+            "CompanyRegistration" => Ok(IdentityType::CompanyRegistration),
+            "PermanentResidentCard" => Ok(IdentityType::PermanentResidentCard),
+            "AsylumCard" => Ok(IdentityType::AsylumCard),
+            "TemporaryResidentPermit" => Ok(IdentityType::TemporaryResidentPermit),
+            "Unknown" => Ok(IdentityType::Unknown),
+            _ => Err(()),
+        }
+    }
+}
 
 /// Database model for person type enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
@@ -40,10 +86,28 @@ pub struct PersonModel {
     #[serde(serialize_with = "serialize_person_type", deserialize_with = "deserialize_person_type")]
     pub person_type: PersonType,
     
+    #[serde(
+        serialize_with = "crate::models::person::common_enums::serialize_risk_rating",
+        deserialize_with = "crate::models::person::common_enums::deserialize_risk_rating"
+    )]
+    pub risk_rating: RiskRating,
+    #[serde(
+        serialize_with = "crate::models::person::common_enums::serialize_person_status",
+        deserialize_with = "crate::models::person::common_enums::deserialize_person_status"
+    )]
+    pub status: PersonStatus,
+    
     pub display_name: HeaplessString<100>,
 
     /// External identifier (e.g., employee ID, badge number, system ID)
     pub external_identifier: Option<HeaplessString<50>>,
+
+    #[serde(
+        serialize_with = "serialize_identity_type",
+        deserialize_with = "deserialize_identity_type"
+    )]
+    pub id_type: IdentityType,
+    pub id_number: HeaplessString<50>,
 
     pub entity_reference_count: i32,
     
@@ -104,6 +168,7 @@ pub struct PersonIdxModel {
     pub external_identifier_hash: Option<i64>,
     pub organization_person_id: Option<Uuid>,
     pub duplicate_of_person_id: Option<Uuid>,
+    pub id_number_hash: Option<i64>,
 }
 
 impl HasPrimaryKey for PersonIdxModel {
@@ -120,11 +185,14 @@ impl IndexAware for PersonModel {
             crate::utils::hash_as_i64(&ext_id.as_str()).ok()
         });
 
+        let id_number_hash = crate::utils::hash_as_i64(&self.id_number.as_str()).ok();
+
         PersonIdxModel {
             id: self.id,
             external_identifier_hash,
             organization_person_id: self.organization_person_id,
             duplicate_of_person_id: self.duplicate_of_person_id,
+            id_number_hash,
         }
     }
 }
@@ -144,6 +212,10 @@ impl Indexable for PersonIdxModel {
             "external_identifier_hash".to_string(),
             self.external_identifier_hash,
         );
+        keys.insert(
+            "id_number_hash".to_string(),
+            self.id_number_hash,
+        );
         keys
     }
 
@@ -162,6 +234,42 @@ impl Indexable for PersonIdxModel {
 }
 
 pub type PersonIdxModelCache = IdxModelCache<PersonIdxModel>;
+
+// Serialization functions for IdentityType
+fn serialize_identity_type<S>(value: &IdentityType, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let value_str = match value {
+        IdentityType::NationalId => "NationalId",
+        IdentityType::Passport => "Passport",
+        IdentityType::CompanyRegistration => "CompanyRegistration",
+        IdentityType::PermanentResidentCard => "PermanentResidentCard",
+        IdentityType::AsylumCard => "AsylumCard",
+        IdentityType::TemporaryResidentPermit => "TemporaryResidentPermit",
+        IdentityType::Unknown => "Unknown",
+    };
+    serializer.serialize_str(value_str)
+}
+
+fn deserialize_identity_type<'de, D>(deserializer: D) -> Result<IdentityType, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value_str = String::deserialize(deserializer)?;
+    match value_str.as_str() {
+        "NationalId" => Ok(IdentityType::NationalId),
+        "Passport" => Ok(IdentityType::Passport),
+        "CompanyRegistration" => Ok(IdentityType::CompanyRegistration),
+        "PermanentResidentCard" => Ok(IdentityType::PermanentResidentCard),
+        "AsylumCard" => Ok(IdentityType::AsylumCard),
+        "TemporaryResidentPermit" => Ok(IdentityType::TemporaryResidentPermit),
+        "Unknown" => Ok(IdentityType::Unknown),
+        _ => Err(serde::de::Error::custom(format!(
+            "Invalid IdentityType: {value_str}"
+        ))),
+    }
+}
 
 // Serialization functions for PersonType
 fn serialize_person_type<S>(person_type: &PersonType, serializer: S) -> Result<S::Ok, S::Error>

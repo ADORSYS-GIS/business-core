@@ -48,8 +48,8 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference_audit
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     "#,
                 )
                 .bind(item.id)
@@ -59,6 +59,10 @@ impl EntityReferenceRepositoryImpl {
                 .bind(item.reference_details_l1.as_deref())
                 .bind(item.reference_details_l2.as_deref())
                 .bind(item.reference_details_l3.as_deref())
+                .bind(item.related_person_id)
+                .bind(item.start_date)
+                .bind(item.end_date)
+                .bind(item.status)
                 .bind(item.antecedent_hash)
                 .bind(item.antecedent_audit_log_id)
                 .bind(item.hash)
@@ -70,8 +74,8 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                     "#,
                 )
                 .bind(item.id)
@@ -81,6 +85,10 @@ impl EntityReferenceRepositoryImpl {
                 .bind(item.reference_details_l1.as_deref())
                 .bind(item.reference_details_l2.as_deref())
                 .bind(item.reference_details_l3.as_deref())
+                .bind(item.related_person_id)
+                .bind(item.start_date)
+                .bind(item.end_date)
+                .bind(item.status)
                 .bind(item.antecedent_hash)
                 .bind(item.antecedent_audit_log_id)
                 .bind(item.hash)
@@ -255,14 +263,18 @@ mod tests {
         sqlx::query(
             r#"
             INSERT INTO person
-            (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
             "#,
         )
         .bind(test_person.id)
         .bind(test_person.person_type)
+        .bind(test_person.risk_rating)
+        .bind(test_person.status)
         .bind(test_person.display_name.as_str())
         .bind(test_person.external_identifier.as_deref())
+        .bind(test_person.id_type)
+        .bind(test_person.id_number.as_str())
         .bind(test_person.entity_reference_count)
         .bind(test_person.organization_person_id)
         .bind(test_person.messaging_info1.as_deref())
@@ -296,8 +308,8 @@ mod tests {
         sqlx::query(
             r#"
             INSERT INTO entity_reference
-            (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             "#,
         )
         .bind(final_entity_reference.id)
@@ -307,6 +319,10 @@ mod tests {
         .bind(final_entity_reference.reference_details_l1.as_deref())
         .bind(final_entity_reference.reference_details_l2.as_deref())
         .bind(final_entity_reference.reference_details_l3.as_deref())
+        .bind(final_entity_reference.related_person_id)
+        .bind(final_entity_reference.start_date)
+        .bind(final_entity_reference.end_date)
+        .bind(final_entity_reference.status)
         .bind(final_entity_reference.antecedent_hash)
         .bind(final_entity_reference.antecedent_audit_log_id)
         .bind(final_entity_reference.hash)

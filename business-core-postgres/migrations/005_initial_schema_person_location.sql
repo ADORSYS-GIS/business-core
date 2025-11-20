@@ -56,12 +56,12 @@ CREATE TABLE IF NOT EXISTS location_audit (
     PRIMARY KEY (id, audit_log_id)
 );
 
--- Index on audit_log_id for efficient audit log queries.
+-- Index on id for efficient audit queries by entity ID.
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_location_audit_audit_log_id
-    ON location_audit(audit_log_id);
+CREATE INDEX IF NOT EXISTS idx_location_audit_id
+    ON location_audit(id);
 
 -- Create trigger for location_idx table to notify listeners of changes
 DROP TRIGGER IF EXISTS location_idx_notify ON location_idx;

@@ -9,8 +9,9 @@ use business_core_db::models::person::{
     location::LocationIdxModel,
     person::PersonIdxModel,
     entity_reference::EntityReferenceIdxModel,
+    risk_summary::RiskSummaryIdxModel,
 };
-use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl, EntityReferenceRepositoryImpl};
+use super::{CountryRepositoryImpl, CountrySubdivisionRepositoryImpl, LocalityRepositoryImpl, LocationRepositoryImpl, PersonRepositoryImpl, EntityReferenceRepositoryImpl, RiskSummaryRepositoryImpl, ActivityLogRepositoryImpl, PortfolioRepositoryImpl, ComplianceStatusRepositoryImpl, DocumentRepositoryImpl};
 
 /// Factory for creating person module repositories
 ///
@@ -24,6 +25,7 @@ pub struct PersonRepoFactory {
     location_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<LocationIdxModel>>>,
     person_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<PersonIdxModel>>>,
     entity_reference_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<EntityReferenceIdxModel>>>,
+    risk_summary_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<RiskSummaryIdxModel>>>,
 }
 
 impl PersonRepoFactory {
@@ -52,6 +54,10 @@ impl PersonRepoFactory {
         ));
 
         let entity_reference_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+
+        let risk_summary_idx_cache = Arc::new(ParkingRwLock::new(
             business_core_db::IdxModelCache::new(vec![]).unwrap()
         ));
         
@@ -92,6 +98,12 @@ impl PersonRepoFactory {
                 entity_reference_idx_cache.clone(),
             ));
             listener.register_handler(entity_reference_handler);
+
+            let risk_summary_handler = Arc::new(IndexCacheHandler::new(
+                "risk_summary_idx".to_string(),
+                risk_summary_idx_cache.clone(),
+            ));
+            listener.register_handler(risk_summary_handler);
         }
         
         Arc::new(Self {
@@ -101,6 +113,7 @@ impl PersonRepoFactory {
             location_idx_cache,
             person_idx_cache,
             entity_reference_idx_cache,
+            risk_summary_idx_cache,
         })
     }
 
@@ -164,6 +177,52 @@ impl PersonRepoFactory {
         repo
     }
 
+    /// Build a RiskSummaryRepository with the given executor
+    pub fn build_risk_summary_repo(&self, session: &impl UnitOfWorkSession) -> Arc<RiskSummaryRepositoryImpl> {
+        let repo = Arc::new(RiskSummaryRepositoryImpl::new(
+            session.executor().clone(),
+            self.risk_summary_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build an ActivityLogRepository with the given executor
+    pub fn build_activity_log_repo(&self, session: &impl UnitOfWorkSession) -> Arc<ActivityLogRepositoryImpl> {
+        let repo = Arc::new(ActivityLogRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build a PortfolioRepository with the given executor
+    pub fn build_portfolio_repo(&self, session: &impl UnitOfWorkSession) -> Arc<PortfolioRepositoryImpl> {
+        let repo = Arc::new(PortfolioRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build a ComplianceStatusRepository with the given executor
+    pub fn build_compliance_status_repo(&self, session: &impl UnitOfWorkSession) -> Arc<ComplianceStatusRepositoryImpl> {
+        let repo = Arc::new(ComplianceStatusRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
+    /// Build a DocumentRepository with the given executor
+    pub fn build_document_repo(&self, session: &impl UnitOfWorkSession) -> Arc<DocumentRepositoryImpl> {
+        let repo = Arc::new(DocumentRepositoryImpl::new(
+            session.executor().clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all person repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> PersonRepositories {
         PersonRepositories {
@@ -173,6 +232,11 @@ impl PersonRepoFactory {
             location_repository: self.build_location_repo(session),
             person_repository: self.build_person_repo(session),
             entity_reference_repository: self.build_entity_reference_repo(session),
+            risk_summary_repository: self.build_risk_summary_repo(session),
+            activity_log_repository: self.build_activity_log_repo(session),
+            portfolio_repository: self.build_portfolio_repo(session),
+            compliance_status_repository: self.build_compliance_status_repo(session),
+            document_repository: self.build_document_repo(session),
         }
     }
 }
@@ -185,4 +249,9 @@ pub struct PersonRepositories {
     pub location_repository: Arc<LocationRepositoryImpl>,
     pub person_repository: Arc<PersonRepositoryImpl>,
     pub entity_reference_repository: Arc<EntityReferenceRepositoryImpl>,
+    pub risk_summary_repository: Arc<RiskSummaryRepositoryImpl>,
+    pub activity_log_repository: Arc<ActivityLogRepositoryImpl>,
+    pub portfolio_repository: Arc<PortfolioRepositoryImpl>,
+    pub compliance_status_repository: Arc<ComplianceStatusRepositoryImpl>,
+    pub document_repository: Arc<DocumentRepositoryImpl>,
 }

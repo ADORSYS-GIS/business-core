@@ -4,7 +4,8 @@ use business_core_db::models::person::country_subdivision::CountrySubdivisionMod
 use business_core_db::models::person::entity_reference::{EntityReferenceModel, RelationshipRole};
 use business_core_db::models::person::locality::LocalityModel;
 use business_core_db::models::person::location::{LocationModel, LocationType};
-use business_core_db::models::person::person::{PersonModel, PersonType};
+use business_core_db::models::person::person::{IdentityType, PersonModel, PersonType};
+use business_core_db::models::person::common_enums::{RiskRating, PersonStatus};
 use chrono::Utc;
 use heapless::String as HeaplessString;
 use uuid::Uuid;
@@ -81,8 +82,12 @@ pub fn create_test_person(display_name: &str) -> PersonModel {
     PersonModel {
         id: Uuid::new_v4(),
         person_type: PersonType::Natural,
+        risk_rating: RiskRating::Low,
+        status: PersonStatus::Active,
         display_name: HeaplessString::try_from(display_name).unwrap(),
         external_identifier: None,
+        id_type: IdentityType::NationalId,
+        id_number: HeaplessString::try_from("TEST123456").unwrap(),
         entity_reference_count: 0,
         organization_person_id: None,
         messaging_info1: None,
@@ -109,6 +114,10 @@ pub fn create_test_entity_reference(person_id: Uuid, reference_external_id: &str
         reference_details_l1: None,
         reference_details_l2: None,
         reference_details_l3: None,
+        related_person_id: None,
+        start_date: None,
+        end_date: None,
+        status: None,
         antecedent_hash: 0,
         antecedent_audit_log_id: Uuid::nil(),
         hash: 0,

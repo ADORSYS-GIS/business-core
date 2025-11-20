@@ -40,14 +40,18 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person_audit
-                    (id, person_type, display_name, external_identifier, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                    (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
                     "#,
                 )
                 .bind(final_audit_entity.id)
                 .bind(final_audit_entity.person_type)
+                .bind(final_audit_entity.risk_rating)
+                .bind(final_audit_entity.status)
                 .bind(final_audit_entity.display_name.as_str())
                 .bind(final_audit_entity.external_identifier.as_deref())
+                .bind(final_audit_entity.id_type)
+                .bind(final_audit_entity.id_number.as_str())
                 .bind(final_audit_entity.entity_reference_count)
                 .bind(final_audit_entity.organization_person_id)
                 .bind(final_audit_entity.messaging_info1.as_deref())

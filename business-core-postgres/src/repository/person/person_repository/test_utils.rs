@@ -1,4 +1,5 @@
-use business_core_db::models::person::person::{PersonModel, PersonType};
+use business_core_db::models::person::person::{PersonModel, PersonType, IdentityType};
+use business_core_db::models::person::common_enums::{RiskRating, PersonStatus};
 use heapless::String as HeaplessString;
 use uuid::Uuid;
 
@@ -9,8 +10,12 @@ pub fn create_test_person(
     PersonModel {
         id: Uuid::new_v4(),
         person_type,
+        risk_rating: RiskRating::Low,
+        status: PersonStatus::Active,
         display_name: HeaplessString::try_from(display_name).unwrap(),
         external_identifier: None,
+        id_type: IdentityType::NationalId,
+        id_number: HeaplessString::try_from("TEST123456789").unwrap(),
         entity_reference_count: 0,
         organization_person_id: None,
         messaging_info1: None,
@@ -36,8 +41,12 @@ pub fn create_test_person_with_external_id(
     PersonModel {
         id: Uuid::new_v4(),
         person_type,
+        risk_rating: RiskRating::Low,
+        status: PersonStatus::Active,
         display_name: HeaplessString::try_from(display_name).unwrap(),
         external_identifier: Some(HeaplessString::try_from(external_id).unwrap()),
+        id_type: IdentityType::NationalId,
+        id_number: HeaplessString::try_from("TEST123456789").unwrap(),
         entity_reference_count: 0,
         organization_person_id: None,
         messaging_info1: None,

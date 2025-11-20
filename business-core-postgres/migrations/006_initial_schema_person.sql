@@ -2,14 +2,24 @@
 -- Description: Creates person-related tables with audit trail.
 
 CREATE TYPE person_type AS ENUM ('Natural', 'Legal', 'System', 'Integration', 'Unknown');
+
+CREATE TYPE identity_type AS ENUM ('NationalId', 'Passport', 'CompanyRegistration', 'PermanentResidentCard', 'AsylumCard', 'TemporaryResidentPermit', 'Unknown');
+
+CREATE TYPE risk_rating AS ENUM ('Low', 'Medium', 'High', 'Blacklisted');
+
+CREATE TYPE person_status AS ENUM ('Active', 'PendingVerification', 'Deceased', 'Dissolved', 'Blacklisted');
  
 -- Main Person Table
 -- Stores the current state of the entity.
 CREATE TABLE IF NOT EXISTS person (
     id UUID PRIMARY KEY,
     person_type person_type NOT NULL,
+    risk_rating risk_rating NOT NULL,
+    status person_status NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     external_identifier VARCHAR(50),
+    id_type identity_type NOT NULL,
+    id_number VARCHAR(50) NOT NULL,
     entity_reference_count INTEGER NOT NULL DEFAULT 0,
     organization_person_id UUID,
     messaging_info1 VARCHAR(50),
@@ -32,7 +42,8 @@ CREATE TABLE IF NOT EXISTS person_idx (
     id UUID PRIMARY KEY REFERENCES person(id) ON DELETE CASCADE,
     external_identifier_hash BIGINT,
     organization_person_id UUID,
-    duplicate_of_person_id UUID
+    duplicate_of_person_id UUID,
+    id_number_hash BIGINT
 );
 
 -- Person Audit Table
@@ -41,8 +52,12 @@ CREATE TABLE IF NOT EXISTS person_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
     person_type person_type NOT NULL,
+    risk_rating risk_rating NOT NULL,
+    status person_status NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     external_identifier VARCHAR(50),
+    id_type identity_type NOT NULL,
+    id_number VARCHAR(50) NOT NULL,
     entity_reference_count INTEGER NOT NULL DEFAULT 0,
     organization_person_id UUID,
     messaging_info1 VARCHAR(50),
@@ -64,12 +79,12 @@ CREATE TABLE IF NOT EXISTS person_audit (
     PRIMARY KEY (id, audit_log_id)
 );
 
--- Index on audit_log_id for efficient audit log queries.
+-- Index on id for efficient audit queries by entity ID.
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_person_audit_audit_log_id
-    ON person_audit(audit_log_id);
+CREATE INDEX IF NOT EXISTS idx_person_audit_id
+    ON person_audit(id);
 
 -- Create trigger for person_idx table to notify listeners of changes
 DROP TRIGGER IF EXISTS person_idx_notify ON person_idx;

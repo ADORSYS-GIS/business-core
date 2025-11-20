@@ -1,7 +1,9 @@
 -- Migration: Initial Entity Reference Schema with Audit Support
 -- Description: Creates entity_reference-related tables with audit trail.
 
-CREATE TYPE person_entity_type AS ENUM ('Customer', 'Employee', 'Shareholder', 'Director', 'BeneficialOwner', 'Agent', 'Vendor', 'Partner', 'RegulatoryContact', 'EmergencyContact', 'SystemAdmin', 'Other');
+CREATE TYPE person_entity_type AS ENUM ('Customer', 'Employee', 'Shareholder', 'Director', 'UltimateBeneficialOwner', 'Agent', 'Vendor', 'Partner', 'RegulatoryContact', 'EmergencyContact', 'SystemAdmin', 'Guarantor', 'LegalGuardian', 'PowerOfAttorney', 'Beneficiary', 'AuthorizedSignatory', 'ControllingPerson', 'Delegate', 'Administrator', 'Other');
+
+CREATE TYPE customer_relationship_status AS ENUM ('Active', 'Inactive', 'Pending', 'Terminated', 'Unknown');
  
 -- Main Entity Reference Table
 -- Stores the current state of the entity.
@@ -13,6 +15,10 @@ CREATE TABLE IF NOT EXISTS entity_reference (
     reference_details_l1 VARCHAR(50),
     reference_details_l2 VARCHAR(50),
     reference_details_l3 VARCHAR(50),
+    related_person_id UUID,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    status customer_relationship_status,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -38,6 +44,10 @@ CREATE TABLE IF NOT EXISTS entity_reference_audit (
     reference_details_l1 VARCHAR(50),
     reference_details_l2 VARCHAR(50),
     reference_details_l3 VARCHAR(50),
+    related_person_id UUID,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    status customer_relationship_status,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,
@@ -49,12 +59,12 @@ CREATE TABLE IF NOT EXISTS entity_reference_audit (
     PRIMARY KEY (id, audit_log_id)
 );
 
--- Index on audit_log_id for efficient audit log queries.
+-- Index on id for efficient audit queries by entity ID.
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_entity_reference_audit_audit_log_id
-    ON entity_reference_audit(audit_log_id);
+CREATE INDEX IF NOT EXISTS idx_entity_reference_audit_id
+    ON entity_reference_audit(id);
 
 -- Create trigger for entity_reference_idx table to notify listeners of changes
 DROP TRIGGER IF EXISTS entity_reference_idx_notify ON entity_reference_idx;

@@ -466,12 +466,12 @@ CREATE TABLE IF NOT EXISTS {table_name}_audit (
     PRIMARY KEY (id, audit_log_id)
 );
 
--- Index on audit_log_id for efficient audit log queries.
+-- Index on id for efficient audit queries by entity ID.
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_{table_name}_audit_audit_log_id
-    ON {table_name}_audit(audit_log_id);
+CREATE INDEX IF NOT EXISTS idx_{table_name}_audit_id
+    ON {table_name}_audit(id);
     
     -- Audit Link Table
     -- Tracks all entities modified in a single transaction.
@@ -685,6 +685,80 @@ async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sy
     assert_eq!(deleted_count, 3);
 
     Ok(())
+
+#[tokio::test]
+async fn test_load_audits() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let ctx = setup_test_context().await?;
+    let audit_log_repo = &ctx.audit_repos().audit_log_repository;
+    // Create necessary dependencies (foreign keys, etc.)
+    // ...
+
+    let {entity}_repo = &ctx.{module}_repos().{entity}_repository;
+
+    // Create initial entity
+    let {entity} = create_test_{entity}(/* params */);
+    let {entity}_id = {entity}.id;
+    let audit_log = create_test_audit_log();
+    audit_log_repo.create(&audit_log).await?;
+    let mut saved = {entity}_repo.create_batch(vec![{entity}.clone()], Some(audit_log.id)).await?;
+
+    // Update the entity multiple times to create audit history
+    // IMPORTANT: Must capture the returned updated entity to get the new hash and audit_log_id
+    // This prevents "Concurrent update detected" errors on subsequent updates
+    //
+    // CRITICAL: You MUST modify at least one field on each update iteration.
+    // Objects that haven't changed do not produce new audit records.
+    // Simply cloning without modification will NOT create a new audit record.
+    for i in 1..=3 {
+        let audit_log = create_test_audit_log();
+        audit_log_repo.create(&audit_log).await?;
+        
+        let mut updated = saved[0].clone();
+        // REQUIRED: Modify a field to create a new version - choose an appropriate field for your entity
+        // Examples:
+        // - For strings: updated.field_name = HeaplessString::try_from(format!("Value {i}").as_str()).unwrap();
+        // - For booleans: updated.field_name = !updated.field_name;
+        // - For integers: updated.field_name = i + 1;
+        // - For decimals: updated.field_name = Decimal::from(i);
+        saved = {entity}_repo.update_batch(vec![updated], Some(audit_log.id)).await?;
+    }
+
+    // Load first page of audit records
+    let page = {entity}_repo.load_audits({entity}_id, PageRequest::new(2, 0)).await?;
+
+    // Should have 4 total audit records (1 create + 3 updates)
+    assert_eq!(page.total, 4);
+    assert_eq!(page.items.len(), 2); // First page with limit of 2
+    assert_eq!(page.page_number(), 1);
+    assert_eq!(page.total_pages(), 2);
+    assert!(page.has_more());
+
+    // Load second page
+    let page2 = {entity}_repo.load_audits({entity}_id, PageRequest::new(2, 2)).await?;
+    assert_eq!(page2.total, 4);
+    assert_eq!(page2.items.len(), 2); // Second page with remaining 2 records
+    assert_eq!(page2.page_number(), 2);
+    assert!(!page2.has_more());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_load_audits_empty() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let ctx = setup_test_context().await?;
+    let {entity}_repo = &ctx.{module}_repos().{entity}_repository;
+
+    // Try to load audits for non-existing entity
+    let non_existing_id = uuid::Uuid::new_v4();
+    let page = {entity}_repo.load_audits(non_existing_id, PageRequest::new(20, 0)).await?;
+
+    assert_eq!(page.total, 0);
+    assert_eq!(page.items.len(), 0);
+    assert_eq!(page.page_number(), 1);
+    assert!(!page.has_more());
+
+    Ok(())
+}
 }
 
 ---
@@ -719,6 +793,9 @@ Extends the base template checklist with:
 - [ ] Audit table has composite primary key `(id, audit_log_id)`
 - [ ] Audit table includes all entity fields, including `hash`, `audit_log_id`, `antecedent_hash`, and `antecedent_audit_log_id`
 - [ ] Audit table does NOT have `ON DELETE CASCADE` (audit survives deletion)
+- [ ] Audit table has index on `id` column (not `audit_log_id`) for efficient audit queries
+- [ ] LoadAudits trait is implemented with pagination support
+- [ ] LoadAudits tests verify correct pagination and audit history retrieval
 - [ ] All audit tests pass (creation, update, hash integrity, chain verification)
 - [ ] Migration includes audit table with correct schema
 - [ ] Cleanup script removes audit table
