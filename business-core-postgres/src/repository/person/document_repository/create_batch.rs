@@ -43,8 +43,8 @@ impl DocumentRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_document_audit
-                (id, person_id, document_type, document_path, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, document_type, document_path, status, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(entity.id)
@@ -52,6 +52,9 @@ impl DocumentRepositoryImpl {
             .bind(entity.document_type.as_str())
             .bind(entity.document_path.as_deref())
             .bind(entity.status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
@@ -61,8 +64,8 @@ impl DocumentRepositoryImpl {
             let entity_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_document
-                (id, person_id, document_type, document_path, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, document_type, document_path, status, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(entity.id)
@@ -70,6 +73,9 @@ impl DocumentRepositoryImpl {
             .bind(entity.document_type.as_str())
             .bind(entity.document_path.as_deref())
             .bind(entity.status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)

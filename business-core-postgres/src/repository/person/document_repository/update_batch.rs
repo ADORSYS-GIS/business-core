@@ -57,8 +57,8 @@ impl DocumentRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_document_audit
-                (id, person_id, document_type, document_path, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, document_type, document_path, status, predecessor_1, predecessor_2, predecessor_3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(entity.id)
@@ -66,6 +66,9 @@ impl DocumentRepositoryImpl {
             .bind(entity.document_type.as_str())
             .bind(entity.document_path.as_deref())
             .bind(entity.status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
@@ -79,13 +82,16 @@ impl DocumentRepositoryImpl {
                     document_type = $3,
                     document_path = $4,
                     status = $5,
-                    antecedent_hash = $6,
-                    antecedent_audit_log_id = $7,
-                    hash = $8,
-                    audit_log_id = $9
+                    predecessor_1 = $6,
+                    predecessor_2 = $7,
+                    predecessor_3 = $8,
+                    antecedent_hash = $9,
+                    antecedent_audit_log_id = $10,
+                    hash = $11,
+                    audit_log_id = $12
                 WHERE id = $1
-                  AND hash = $10
-                  AND audit_log_id = $11
+                  AND hash = $13
+                  AND audit_log_id = $14
                 "#,
             )
             .bind(entity.id)
@@ -93,6 +99,9 @@ impl DocumentRepositoryImpl {
             .bind(entity.document_type.as_str())
             .bind(entity.document_path.as_deref())
             .bind(entity.status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
