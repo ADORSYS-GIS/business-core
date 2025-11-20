@@ -23,7 +23,7 @@ use crate::models::index::Index;
 /// }
 /// ```
 #[async_trait]
-pub trait FindIndicesByIds<DB: Database, T: Index>: Send + Sync {
+pub trait FindByIds<DB: Database, T: Index>: Send + Sync {
     /// Find multiple index entities by their unique identifiers
     /// 
     /// # Arguments
@@ -32,5 +32,5 @@ pub trait FindIndicesByIds<DB: Database, T: Index>: Send + Sync {
     /// # Returns
     /// * `Ok(Vec<T>)` - A vector of found index entities (missing entities are not included)
     /// * `Err` - An error if the query could not be executed
-    async fn find_indices_by_ids(&self, ids: &[Uuid]) -> Result<Vec<T>, Box<dyn std::error::Error + Send + Sync>>;
+    async fn find_by_ids(&self, ids: &[Uuid]) -> Result<Vec<T>, Box<dyn std::error::Error + Send + Sync>>;
 }

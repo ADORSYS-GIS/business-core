@@ -1,7 +1,7 @@
 pub mod pagination;
 pub mod exist_by_ids;
-pub mod find_index_by_id;
-pub mod find_indices_by_ids;
+pub mod find_by_id;
+pub mod find_by_ids;
 pub mod load;
 pub mod load_audits;
 pub mod load_batch;
@@ -17,8 +17,8 @@ pub mod delete_batch;
 // Re-exports
 pub use pagination::*;
 pub use exist_by_ids::*;
-pub use find_index_by_id::*;
-pub use find_indices_by_ids::*;
+pub use find_by_id::*;
+pub use find_by_ids::*;
 pub use load::*;
 pub use load_audits::*;
 pub use load_batch::*;
