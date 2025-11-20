@@ -12,6 +12,9 @@ pub fn create_test_portfolio() -> PortfolioModel {
         total_loan_outstanding_grantor: Some(Decimal::from(2000)),
         risk_score: Some(Decimal::new(750, 2)), // 7.50
         compliance_status: Uuid::new_v4(),
+        predecessor_1: None,
+        predecessor_2: None,
+        predecessor_3: None,
         antecedent_hash: 0,
         antecedent_audit_log_id: Uuid::nil(),
         hash: 0,

@@ -220,6 +220,7 @@ ALTER TABLE person_document_audit ADD COLUMN IF NOT EXISTS expiry_date DATE;
 - [ ] Update `update_batch.rs` (INSERT and UPDATE queries)
 - [ ] Update `create_batch.rs` (INSERT queries)
 - [ ] Update `delete_batch.rs` (INSERT queries for audit)
+- [ ] Update `repo_impl.rs` (update `try_from_row`)
 - [ ] Check `load_batch.rs` and `load_audits.rs` if custom SELECT queries are used
 - [ ] Create an ALTER TABLE migration if the entity already exists in production
 - [ ] Update tests that create test entities with the new field

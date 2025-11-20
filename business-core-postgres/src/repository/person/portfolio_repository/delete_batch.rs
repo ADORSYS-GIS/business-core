@@ -51,9 +51,10 @@ impl PortfolioRepositoryImpl {
                 r#"
                 INSERT INTO portfolio_audit
                 (id, person_id, total_accounts, total_balance, total_loan_outstanding_main, 
-                 total_loan_outstanding_grantor, risk_score, compliance_status, 
+                 total_loan_outstanding_grantor, risk_score, compliance_status,
+                 predecessor_1, predecessor_2, predecessor_3,
                  antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 "#,
             )
             .bind(final_audit_entity.id)
@@ -64,6 +65,9 @@ impl PortfolioRepositoryImpl {
             .bind(final_audit_entity.total_loan_outstanding_grantor)
             .bind(final_audit_entity.risk_score)
             .bind(final_audit_entity.compliance_status)
+            .bind(final_audit_entity.predecessor_1)
+            .bind(final_audit_entity.predecessor_2)
+            .bind(final_audit_entity.predecessor_3)
             .bind(final_audit_entity.antecedent_hash)
             .bind(final_audit_entity.antecedent_audit_log_id)
             .bind(final_audit_entity.hash)
