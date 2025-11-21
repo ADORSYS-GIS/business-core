@@ -55,6 +55,6 @@ CREATE TABLE IF NOT EXISTS portfolio_audit (
 CREATE INDEX IF NOT EXISTS idx_portfolio_audit_id
     ON portfolio_audit(id);
 
--- Update entity_type enum to include PORTFOLIO
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'PORTFOLIO';
+-- Update audit_entity_type enum to include Portfolio
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'Portfolio';

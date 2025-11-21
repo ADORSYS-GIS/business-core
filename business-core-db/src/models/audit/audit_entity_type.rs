@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Type;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "entity_type", rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "audit_entity_type", rename_all = "PascalCase")]
 pub enum AuditEntityType {
     Location,
     Person,
@@ -18,15 +18,15 @@ pub enum AuditEntityType {
 impl From<AuditEntityType> for &str {
     fn from(val: AuditEntityType) -> Self {
         match val {
-            AuditEntityType::Location => "LOCATION",
-            AuditEntityType::Person => "PERSON",
-            AuditEntityType::EntityReference => "ENTITY_REFERENCE",
-            AuditEntityType::ReasonReference => "REASON_REFERENCE",
-            AuditEntityType::ActivityLog => "ACTIVITY_LOG",
-            AuditEntityType::Portfolio => "PORTFOLIO",
-            AuditEntityType::ComplianceStatus => "COMPLIANCE_STATUS",
-            AuditEntityType::Document => "DOCUMENT",
-            AuditEntityType::Named => "NAMED",
+            AuditEntityType::Location => "Location",
+            AuditEntityType::Person => "Person",
+            AuditEntityType::EntityReference => "EntityReference",
+            AuditEntityType::ReasonReference => "ReasonReference",
+            AuditEntityType::ActivityLog => "ActivityLog",
+            AuditEntityType::Portfolio => "Portfolio",
+            AuditEntityType::ComplianceStatus => "ComplianceStatus",
+            AuditEntityType::Document => "Document",
+            AuditEntityType::Named => "Named",
         }
     }
 }

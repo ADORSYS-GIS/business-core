@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Type;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[sqlx(type_name = "entity_type", rename_all = "SCREAMING_SNAKE_CASE")]
+#[sqlx(type_name = "named_entity_type", rename_all = "PascalCase")]
 pub enum NamedEntityType {
     Location,
     Person,
@@ -26,23 +26,23 @@ pub enum NamedEntityType {
 impl From<NamedEntityType> for &str {
     fn from(val: NamedEntityType) -> Self {
         match val {
-            NamedEntityType::Location => "LOCATION",
-            NamedEntityType::Person => "PERSON",
-            NamedEntityType::EntityReference => "ENTITY_REFERENCE",
-            NamedEntityType::ReasonReference => "REASON_REFERENCE",
-            NamedEntityType::ActivityLog => "ACTIVITY_LOG",
-            NamedEntityType::Portfolio => "PORTFOLIO",
-            NamedEntityType::ComplianceStatus => "COMPLIANCE_STATUS",
-            NamedEntityType::Document => "DOCUMENT",
-            NamedEntityType::Country => "COUNTRY",
-            NamedEntityType::CountrySubdivision => "COUNTRY_SUBDIVISION",
-            NamedEntityType::Locality => "LOCALITY",
-            NamedEntityType::ComplianceMetadata => "COMPLIANCE_METADATA",
-            NamedEntityType::Reason => "REASON",
-            NamedEntityType::RiskSummary => "RISK_SUMMARY",
-            NamedEntityType::BusinessDay => "BUSINESS_DAY",
-            NamedEntityType::WeekendDays => "WEEKEND_DAYS",
-            NamedEntityType::DateCalculationRules => "DATE_CALCULATION_RULES",
+            NamedEntityType::Location => "Location",
+            NamedEntityType::Person => "Person",
+            NamedEntityType::EntityReference => "EntityReference",
+            NamedEntityType::ReasonReference => "ReasonReference",
+            NamedEntityType::ActivityLog => "ActivityLog",
+            NamedEntityType::Portfolio => "Portfolio",
+            NamedEntityType::ComplianceStatus => "ComplianceStatus",
+            NamedEntityType::Document => "Document",
+            NamedEntityType::Country => "Country",
+            NamedEntityType::CountrySubdivision => "CountrySubdivision",
+            NamedEntityType::Locality => "Locality",
+            NamedEntityType::ComplianceMetadata => "ComplianceMetadata",
+            NamedEntityType::Reason => "Reason",
+            NamedEntityType::RiskSummary => "RiskSummary",
+            NamedEntityType::BusinessDay => "BusinessDay",
+            NamedEntityType::WeekendDays => "WeekendDays",
+            NamedEntityType::DateCalculationRules => "DateCalculationRules",
         }
     }
 }

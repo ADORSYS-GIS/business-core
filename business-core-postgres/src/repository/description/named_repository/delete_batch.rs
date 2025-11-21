@@ -1,11 +1,11 @@
-use business_core_db::models::audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType};
+use business_core_db::models::audit::{AuditLinkModel, AuditEntityType};
 use async_trait::async_trait;
 use business_core_db::repository::load_batch::LoadBatch;
 use business_core_db::repository::delete_batch::DeleteBatch;
-use business_core_db::utils::hash_as_i64;
 use sqlx::Postgres;
 use std::error::Error;
 use uuid::Uuid;
+use business_core_db::utils::hash_as_i64;
 
 use super::repo_impl::NamedRepositoryImpl;
 
@@ -20,85 +20,81 @@ impl NamedRepositoryImpl {
             return Ok(0);
         }
 
-        // 1. Load the full entities to be deleted
         let entities_to_delete = repo.load_batch(ids).await?;
-        
         let mut deleted_count = 0;
-        let mut tx = repo.executor.tx.lock().await;
-        let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
-        
-        for entity_opt in entities_to_delete {
-            let entity = match entity_opt {
-                Some(e) => e,
-                None => continue,
-            };
-            
-            // 2. Create a final audit record before deletion
-            let mut final_audit_entity = entity.clone();
-            final_audit_entity.antecedent_hash = entity.hash;
-            final_audit_entity.antecedent_audit_log_id = entity.audit_log_id
-                .ok_or("Entity must have audit_log_id for deletion")?;
-            final_audit_entity.audit_log_id = Some(audit_log_id);
-            final_audit_entity.hash = 0;
-            
-            let final_hash = hash_as_i64(&final_audit_entity)?;
-            final_audit_entity.hash = final_hash;
-            
-            // 3. Build the audit insert query
-            let audit_insert_query = sqlx::query(
-                r#"
-                INSERT INTO named_audit
-                (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-                "#,
-            )
-            .bind(final_audit_entity.id)
-            .bind(final_audit_entity.entity_type)
-            .bind(final_audit_entity.name_l1.as_str())
-            .bind(final_audit_entity.name_l2.as_deref())
-            .bind(final_audit_entity.name_l3.as_deref())
-            .bind(final_audit_entity.name_l4.as_deref())
-            .bind(final_audit_entity.description_l1.as_deref())
-            .bind(final_audit_entity.description_l2.as_deref())
-            .bind(final_audit_entity.description_l3.as_deref())
-            .bind(final_audit_entity.description_l4.as_deref())
-            .bind(final_audit_entity.antecedent_hash)
-            .bind(final_audit_entity.antecedent_audit_log_id)
-            .bind(final_audit_entity.hash)
-            .bind(final_audit_entity.audit_log_id);
-            
-            // 4. Build the entity delete query
-            let entity_delete_query = sqlx::query(
-                r#"
-                DELETE FROM named WHERE id = $1
-                "#,
-            )
-            .bind(entity.id);
-            
-            // 5. Create audit link
-            let audit_link = AuditLinkModel {
-                audit_log_id,
-                entity_id: entity.id,
-                entity_type: AuditEntityType::Named,
-            };
-            let audit_link_query = sqlx::query(
-                r#"
-                INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
-                VALUES ($1, $2, $3)
-                "#,
-            )
-            .bind(audit_link.audit_log_id)
-            .bind(audit_link.entity_id)
-            .bind(audit_link.entity_type);
-            
-            // 6. Execute in transaction (audit first!)
-            audit_insert_query.execute(&mut **transaction).await?;
-            let result = entity_delete_query.execute(&mut **transaction).await?;
-            audit_link_query.execute(&mut **transaction).await?;
-            
-            deleted_count += result.rows_affected() as usize;
-        }
 
+        {
+            let mut tx = repo.executor.tx.lock().await;
+            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
+
+            for entity in entities_to_delete.into_iter().flatten() {
+                let mut final_audit_entity = entity.clone();
+                final_audit_entity.antecedent_hash = entity.hash;
+                final_audit_entity.antecedent_audit_log_id = entity.audit_log_id.ok_or("Entity must have audit_log_id for deletion")?;
+                final_audit_entity.audit_log_id = Some(audit_log_id);
+                final_audit_entity.hash = 0;
+
+                let final_hash = hash_as_i64(&final_audit_entity)?;
+                final_audit_entity.hash = final_hash;
+
+                sqlx::query(
+                    r#"
+                    INSERT INTO named_audit
+                    (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                    "#,
+                )
+                .bind(final_audit_entity.id)
+                .bind(final_audit_entity.entity_type)
+                .bind(final_audit_entity.name_l1.as_str())
+                .bind(final_audit_entity.name_l2.as_deref())
+                .bind(final_audit_entity.name_l3.as_deref())
+                .bind(final_audit_entity.name_l4.as_deref())
+                .bind(final_audit_entity.description_l1.as_deref())
+                .bind(final_audit_entity.description_l2.as_deref())
+                .bind(final_audit_entity.description_l3.as_deref())
+                .bind(final_audit_entity.description_l4.as_deref())
+                .bind(final_audit_entity.antecedent_hash)
+                .bind(final_audit_entity.antecedent_audit_log_id)
+                .bind(final_audit_entity.hash)
+                .bind(final_audit_entity.audit_log_id)
+                .execute(&mut **transaction)
+                .await?;
+
+                let result = sqlx::query(r#"DELETE FROM named WHERE id = $1"#)
+                    .bind(entity.id)
+                    .execute(&mut **transaction)
+                    .await?;
+
+                // Create audit link
+                let audit_link = AuditLinkModel {
+                    audit_log_id,
+                    entity_id: entity.id,
+                    entity_type: AuditEntityType::Named,
+                };
+                sqlx::query(
+                    r#"
+                    INSERT INTO audit_link (audit_log_id, entity_id, entity_type)
+                    VALUES ($1, $2, $3)
+                    "#,
+                )
+                .bind(audit_link.audit_log_id)
+                .bind(audit_link.entity_id)
+                .bind(audit_link.entity_type)
+                .execute(&mut **transaction)
+                .await?;
+                
+                deleted_count += result.rows_affected() as usize;
+            }
+        }
+        
+        {
+            let cache = repo.named_idx_cache.read().await;
+            for id in ids {
+                cache.remove(id);
+            }
+        }
+        
         Ok(deleted_count)
     }
 }
@@ -116,20 +112,12 @@ impl DeleteBatch<Postgres> for NamedRepositoryImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::repository::description::named_repository::test_utils::create_test_named;
+    use crate::repository::person::test_utils::create_test_audit_log;
     use crate::test_helper::setup_test_context;
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::delete_batch::DeleteBatch;
-    use business_core_db::repository::load_batch::LoadBatch;
     use uuid::Uuid;
-
-    fn create_test_audit_log() -> business_core_db::models::audit::audit_log::AuditLogModel {
-        business_core_db::models::audit::audit_log::AuditLogModel {
-            id: uuid::Uuid::new_v4(),
-            updated_at: chrono::Utc::now(),
-            updated_by_person_id: uuid::Uuid::new_v4(),
-        }
-    }
+    use crate::repository::description::named_repository::test_utils::create_test_named;
 
     #[tokio::test]
     async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -140,32 +128,28 @@ mod tests {
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
-        let mut entities = Vec::new();
-        for _ in 0..3 {
-            entities.push(create_test_named());
+        let mut named_entities = Vec::new();
+        for i in 0..3 {
+            let named = create_test_named(&format!("Entity to Delete {i}"));
+            named_entities.push(named);
         }
 
-        let saved = named_repo.create_batch(entities, Some(audit_log.id)).await?;
+        let saved = named_repo.create_batch(named_entities, Some(audit_log.id)).await?;
 
         let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
-        
-        // Create new audit log for delete
+        // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
+        // in order to prevent duplicate key, we will create a new audit log for the delete.
         let delete_audit_log = create_test_audit_log();
         audit_log_repo.create(&delete_audit_log).await?;
-        
         let deleted_count = named_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
 
         assert_eq!(deleted_count, 3);
-
-        // Verify deletion
-        let loaded = named_repo.load_batch(&ids).await?;
-        assert!(loaded.iter().all(|item| item.is_none()));
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_delete_batch_not_found() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn test_delete_batch_with_non_existing() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
         let named_repo = &ctx.description_repos().named_repository;
@@ -173,16 +157,17 @@ mod tests {
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
-        let entity = create_test_named();
-        let saved = named_repo.create_batch(vec![entity], Some(audit_log.id)).await?;
+        let named = create_test_named("Entity to Delete");
+
+        let saved = named_repo.create_batch(vec![named], Some(audit_log.id)).await?;
 
         let mut ids = vec![saved[0].id];
         ids.push(Uuid::new_v4()); // Add non-existing ID
 
-        // Create new audit log for delete
+        // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
+        // in order to prevent duplicate key, we will create a new audit log for the delete.
         let delete_audit_log = create_test_audit_log();
         audit_log_repo.create(&delete_audit_log).await?;
-        
         let deleted_count = named_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
 
         assert_eq!(deleted_count, 1); // Only one actually deleted

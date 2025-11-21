@@ -159,7 +159,7 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     let person_factory = crate::repository::person::PersonRepoFactory::new(None);
     let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(None);
     let calendar_factory = crate::repository::calendar::CalendarRepoFactory::new(None);
-    let description_factory = crate::repository::description::DescriptionRepoFactory::new();
+    let description_factory = crate::repository::description::DescriptionRepoFactory::new(None);
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
@@ -202,7 +202,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     let person_factory = crate::repository::person::PersonRepoFactory::new(Some(&mut listener));
     let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(Some(&mut listener));
     let calendar_factory = crate::repository::calendar::CalendarRepoFactory::new(Some(&mut listener));
-    let description_factory = crate::repository::description::DescriptionRepoFactory::new();
+    let description_factory = crate::repository::description::DescriptionRepoFactory::new(Some(&mut listener));
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);

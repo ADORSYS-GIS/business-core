@@ -75,16 +75,9 @@ mod tests {
     use business_core_db::repository::load_audits::LoadAudits;
     use business_core_db::repository::pagination::PageRequest;
     use business_core_db::repository::update_batch::UpdateBatch;
+    use crate::repository::person::test_utils::create_test_audit_log;
     use crate::repository::description::named_repository::test_utils::create_test_named;
     use heapless::String as HeaplessString;
-
-    fn create_test_audit_log() -> business_core_db::models::audit::audit_log::AuditLogModel {
-        business_core_db::models::audit::audit_log::AuditLogModel {
-            id: uuid::Uuid::new_v4(),
-            updated_at: chrono::Utc::now(),
-            updated_by_person_id: uuid::Uuid::new_v4(),
-        }
-    }
 
     #[tokio::test]
     async fn test_load_audits() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -93,20 +86,22 @@ mod tests {
         let named_repo = &ctx.description_repos().named_repository;
 
         // Create initial named entity
-        let named = create_test_named();
+        let named = create_test_named("Initial Name");
         let named_id = named.id;
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
         let mut saved = named_repo.create_batch(vec![named.clone()], Some(audit_log.id)).await?;
 
-        // Update the entity multiple times to create audit history
+        // Update the named entity multiple times to create audit history
+        // IMPORTANT: Must capture the returned updated entity to get the new hash and audit_log_id
+        // This prevents "Concurrent update detected" errors on subsequent updates
         for i in 1..=3 {
             let audit_log = create_test_audit_log();
             audit_log_repo.create(&audit_log).await?;
             
             let mut updated = saved[0].clone();
-            // Modify a field to create a new version - change name_l1
-            updated.name_l1 = HeaplessString::try_from(format!("Name {i}").as_str()).unwrap();
+            // Modify a field to create a new version
+            updated.name_l1 = HeaplessString::try_from(format!("Updated Name {i}").as_str()).unwrap();
             saved = named_repo.update_batch(vec![updated], Some(audit_log.id)).await?;
         }
 

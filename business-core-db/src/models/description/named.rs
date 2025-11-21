@@ -2,20 +2,24 @@ use heapless::String as HeaplessString;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use std::collections::HashMap;
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
-use super::named_entity_type::NamedEntityType;
+use crate::{HasPrimaryKey, IdxModelCache, Indexable};
+use crate::models::{Index, IndexAware};
+use super::named_entity_type::{NamedEntityType, serialize_entity_type, deserialize_entity_type};
 
 /// # Documentation
 /// Named entity provides multilingual support for names and descriptions.
 /// 
-/// This entity is auditable but not indexable - accessed by ID only.
+/// This entity is auditable and indexable - accessed by ID with named_entity_type tracking.
 /// Supports up to 4 language variants (l1, l2, l3, l4) for both names and descriptions.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct NamedModel {
     pub id: Uuid,
 
     /// Entity type indicating which table this Named entity is connected to
+    #[serde(serialize_with = "serialize_entity_type", deserialize_with = "deserialize_entity_type")]
     pub entity_type: NamedEntityType,
 
     /// Primary name (language 1) - required
@@ -72,3 +76,49 @@ impl Auditable for NamedModel {
         self.audit_log_id
     }
 }
+
+/// Index model for Named entity
+/// Contains entity_type but it is not used as a secondary index
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct NamedIdxModel {
+    pub id: Uuid,
+    #[serde(serialize_with = "serialize_entity_type", deserialize_with = "deserialize_entity_type")]
+    pub entity_type: NamedEntityType,
+}
+
+impl HasPrimaryKey for NamedIdxModel {
+    fn primary_key(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl IndexAware for NamedModel {
+    type IndexType = NamedIdxModel;
+    
+    fn to_index(&self) -> Self::IndexType {
+        NamedIdxModel {
+            id: self.id,
+            entity_type: self.entity_type,
+        }
+    }
+}
+
+impl Identifiable for NamedIdxModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Index for NamedIdxModel {}
+
+impl Indexable for NamedIdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        HashMap::new()
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        HashMap::new()
+    }
+}
+
+pub type NamedIdxModelCache = IdxModelCache<NamedIdxModel>;

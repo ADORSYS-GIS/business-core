@@ -1,17 +1,24 @@
-# Generate Named Entity with Audit Support
+# Generate Named Entity Model and Repository
 
-## Objective
-Generate a complete auditable entity implementation for the `Named` entity following the auditable entity pattern (without indexing). The Named entity provides multilingual support for names and descriptions.
+## Context
+Generate complete model and repository code for the `Named` entity using the entity template skill. The `Named` entity provides multilingual support for names and descriptions with up to 4 language variants.
 
-## Source Material
-- **Skill Template**: `docs/skills/entity_template/entity_with_audit.md`
-- **Example Structure**: `business-core-db/src/models/description/named_example.rs`
-- **Reference Implementation**: `business-core-db/src/models/reason_and_purpose/reason_reference.rs`
-- **Reference Repository**: `business-core-postgres/src/repository/reason_and_purpose/reason_reference_repository/`
+## Reference Files
+- **Skill Template**: `docs/skills/entity_template/entity_with_index_and_audit.md`
+- **Sample Model**: `business-core-db/src/models/description/named_example.rs`
+- **Example Model**: `business-core-db/src/models/person/person.rs`
+- **Example Repository**: `business-core-postgres/src/repository/person/person_repository`
 
-## Entity Specification
+## Entity Characteristics
+- **Entity Name**: Named
+- **Module**: description
+- **Table Name**: named
+- **Auditable**: Yes (includes hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+- **Indexable**: Yes (includes entity_type field, but it is not an index field)
 
-### Named Model Fields
+## Model Structure
+
+### NamedModel Fields
 ```rust
 pub struct NamedModel {
     pub id: Uuid,
@@ -24,7 +31,6 @@ pub struct NamedModel {
     pub description_l2: Option<HeaplessString<255>>,
     pub description_l3: Option<HeaplessString<255>>,
     pub description_l4: Option<HeaplessString<255>>,
-    // Audit fields
     pub antecedent_hash: i64,
     pub antecedent_audit_log_id: Uuid,
     pub hash: i64,
@@ -32,192 +38,174 @@ pub struct NamedModel {
 }
 ```
 
-**Note**: The example file has duplicate field names (`name_l3` and `description_l3` appear twice). The correct fields should be `name_l1`, `name_l2`, `name_l3`, `name_l4` and `description_l1`, `description_l2`, `description_l3`, `description_l4`.
+### NamedIdxModel Fields
+```rust
+pub struct NamedIdxModel {
+    pub id: Uuid,
+    pub entity_type: NamedEntityType,
+}
+```
 
-### Entity Characteristics
-- **Module**: `description`
-- **Table Name**: `named`
-- **Entity Type**: Add `Named` to `EntityType` enum in `business-core-db/src/models/audit/entity_type.rs`
-- **Auditable**: Yes (complete audit trail with hash verification)
-- **Indexable**: No (accessed by ID only)
-- **Cacheable**: No (no in-memory cache)
+## Index Fields Analysis
+- **Primary Key**: `id` (no finder needed)
 
-## Implementation Tasks
+## Tasks to Complete
 
-### 1. Model Implementation
-**File**: `business-core-db/src/models/description/named.rs`
+### 1. Model File
+- [ ] Create `business-core-db/src/models/description/named.rs` based on `named_example.rs`
+- [ ] Implement `Identifiable` trait for `NamedModel`
+- [ ] Implement `Auditable` trait for `NamedModel`
+- [ ] Implement `IndexAware` trait for `NamedModel`
+- [ ] Implement `HasPrimaryKey` trait for `NamedIdxModel`
+- [ ] Implement `Identifiable` trait for `NamedIdxModel`
+- [ ] Implement `Index` trait for `NamedIdxModel`
+- [ ] Implement `Indexable` trait for `NamedIdxModel` (no secondary indexes needed)
+- [ ] Add serialization support for `NamedEntityType` using existing functions in `named_entity_type.rs`
 
-- [ ] Define `NamedModel` struct with all fields (correcting duplicate field names from example)
-- [ ] Add audit fields: `antecedent_hash`, `antecedent_audit_log_id`, `hash`, `audit_log_id`
-- [ ] Implement `Identifiable` trait
-- [ ] Implement `Auditable` trait
-- [ ] Add proper documentation comments
-- [ ] Use `HeaplessString<50>` for name fields
-- [ ] Use `HeaplessString<255>` for description fields
+### 2. Update Model Module
+- [ ] Update `business-core-db/src/models/description/mod.rs` to export `named` instead of `named_example`
 
-### 2. Module Registration
-**File**: `business-core-db/src/models/description/mod.rs`
+### 3. Repository Structure
+Create directory: `business-core-postgres/src/repository/description/named_repository/`
 
-- [ ] Create if not exists
-- [ ] Add `pub mod named;` declaration
+### 4. Repository Implementation Files
+- [ ] **repo_impl.rs** - Main repository implementation with cache
+- [ ] **create_batch.rs** - Create entities with audit trail
+- [ ] **load_batch.rs** - Load entities by IDs
+- [ ] **load_audits.rs** - Load audit history with pagination
+- [ ] **update_batch.rs** - Update entities with audit trail and change detection
+- [ ] **delete_batch.rs** - Delete entities with final audit record
+- [ ] **exist_by_ids.rs** - Check existence of entities
+- [ ] **find_by_entity_type.rs** - Finder method for entity_type secondary index
+- [ ] **test_utils.rs** - Test helper functions
 
-**File**: `business-core-db/src/models/mod.rs`
+### 5. Repository Module Files
+- [ ] Create `business-core-postgres/src/repository/description/mod.rs`
+- [ ] Create `business-core-postgres/src/repository/description/factory.rs`
+- [ ] Update `business-core-postgres/src/repository/mod.rs` to include description module
 
-- [ ] Add `pub mod description;` if not already present
+### 6. Test Implementation
+Implement comprehensive tests in each repository file:
 
-**File**: `business-core-db/src/models/audit/entity_type.rs`
+#### test_utils.rs
+- [ ] `create_test_named()` - Helper to create test Named entities
+- [ ] `setup_test_context()` - Test context setup helper
 
-- [ ] Add `Named` variant to `EntityType` enum
-- [ ] Update all match statements to include `Named` variant
+#### create_batch.rs
+- [ ] `test_create_batch()` - Test creating multiple Named entities
 
-### 3. Repository Implementation
-**Directory**: `business-core-postgres/src/repository/description/named_repository/`
+#### load_batch.rs
+- [ ] `test_load_batch()` - Test loading entities by IDs
+- [ ] `test_load_batch_empty()` - Test loading non-existent IDs
 
-#### 3.1 Repository Structure Files
+#### update_batch.rs
+- [ ] `test_update_batch()` - Test updating entities with change detection
+- [ ] `test_update_no_change()` - Test that unchanged entities don't create audit records
 
-**File**: `repo_impl.rs`
-- [ ] Define `NamedRepositoryImpl` struct with `executor: Executor`
-- [ ] Implement `TryFromRow<PgRow>` for `NamedModel` with proper field mappings:
-  - Use `get_heapless_string()` for `name_l1`
-  - Use `get_optional_heapless_string()` for optional name and description fields
-- [ ] Implement `TransactionAware` trait (simple version, no cache)
+#### delete_batch.rs
+- [ ] `test_delete_batch()` - Test deleting entities with final audit record
 
-**File**: `create_batch.rs`
-- [ ] Implement `create_batch_impl` following the CREATE pattern
-- [ ] Hash computation with `hash=0` before hashing
-- [ ] Insert into audit table first, then main table, then audit_link
-- [ ] Implement `CreateBatch` trait
-- [ ] Add test: `test_create_batch` - create 3 entities
-- [ ] Add test: `test_create_batch_empty` - handle empty batch
+#### exist_by_ids.rs
+- [ ] `test_exist_by_ids()` - Test checking existence of entities
 
-**File**: `load_batch.rs`
-- [ ] Implement `load_batch_impl` with ID-based loading
-- [ ] Query: `SELECT * FROM named WHERE id = ANY($1)`
-- [ ] Implement `LoadBatch` trait
-- [ ] Add test: `test_load_batch` - load existing entity
-- [ ] Add test: `test_load_batch_not_found` - handle missing entity
+#### load_audits.rs
+- [ ] `test_load_audits()` - Test loading audit history with pagination
+- [ ] `test_load_audits_empty()` - Test loading audits for non-existent entity
 
-**File**: `update_batch.rs`
-- [ ] Implement `update_batch_impl` following UPDATE pattern
-- [ ] Track antecedent hash and audit_log_id
-- [ ] Check if entity actually changed before updating
-- [ ] Update audit table first, then main table, then audit_link
-- [ ] Implement `UpdateBatch` trait
-- [ ] Add test: `test_update_batch` - update entity fields
-- [ ] Add test: `test_update_batch_no_change` - verify no update when unchanged
+#### Cache Notification Test
+- [ ] `test_named_insert_triggers_cache_notification()` - Test direct database insert triggers cache update
 
-**File**: `delete_batch.rs`
-- [ ] Implement `delete_batch_impl` following DELETE pattern
-- [ ] Load full entities before deletion
-- [ ] Create final audit record before deletion
-- [ ] Delete from main table (audit survives)
-- [ ] Implement `DeleteBatch` trait
-- [ ] Add test: `test_delete_batch` - delete entities
-- [ ] Add test: `test_delete_batch_not_found` - handle missing entities
+### 7. Database Schema
+The schema already exists as:
+- Migration: `business-core-postgres/migrations/002_initial_schema_named.sql`
+- Cleanup: `business-core-postgres/cleanup/002_cleanup_named.sql`
 
-**File**: `exist_by_ids.rs`
-- [ ] Implement `exist_by_ids_impl` with direct database query
-- [ ] Query: `SELECT id FROM named WHERE id = ANY($1)`
-- [ ] Implement `ExistById` trait
-- [ ] Add test: `test_exist_by_ids` - check existing and non-existing IDs
+### 8. Cleanup
+- [ ] Delete `business-core-db/src/models/description/named_example.rs` after successful generation
 
-**File**: `load_audits.rs`
-- [ ] Implement `load_audits_impl` with pagination
-- [ ] Count query: `SELECT COUNT(*) FROM named_audit WHERE id = $1`
-- [ ] Paginated query with ORDER BY audit_log_id DESC
-- [ ] Implement `LoadAudits` trait
-- [ ] Add test: `test_load_audits` - verify audit history pagination
-- [ ] Add test: `test_load_audits_empty` - handle non-existent entity
+## Implementation Guidelines
 
-**File**: `test_utils.rs`
-- [ ] Create `create_test_named()` helper function
-- [ ] Create `create_test_named_with_all_languages()` helper function
-- [ ] Initialize audit fields to default values (hash=0, audit_log_id=None)
+### Hash Computation Pattern
+```rust
+use business_core_db::utils::hash_as_i64;
 
-**File**: `mod.rs`
-- [ ] Declare all submodules
-- [ ] Export `NamedRepositoryImpl`
+// For CREATE
+let mut entity_for_hashing = entity.clone();
+entity_for_hashing.hash = 0;
+entity_for_hashing.audit_log_id = Some(audit_log_id);
+let computed_hash = hash_as_i64(&entity_for_hashing)?;
+entity.hash = computed_hash;
+entity.audit_log_id = Some(audit_log_id);
+```
 
-### 4. Repository Factory Integration
+### SQL Query Pattern for Create
+```sql
+INSERT INTO named_audit
+(id, entity_type, name_l1, name_l2, name_l3, name_l4, 
+ description_l1, description_l2, description_l3, description_l4, 
+ hash, audit_log_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+```
 
-**File**: `business-core-postgres/src/repository/description/factory.rs`
-- [ ] Create `DescriptionRepoFactory` struct (no cache fields)
-- [ ] Implement `new()` method
-- [ ] Implement `build_named_repo()` method
-- [ ] Register repository as `TransactionAware`
-
-**File**: `business-core-postgres/src/repository/description/mod.rs`
-- [ ] Create if not exists
-- [ ] Add `pub mod named_repository;`
-- [ ] Add `pub mod factory;`
-- [ ] Export factory
-
-**File**: `business-core-postgres/src/repository/mod.rs`
-- [ ] Add `pub mod description;` if not present
-
-### 5. Database Schema
-
-**File**: `business-core-postgres/migrations/0XX_initial_schema_named.sql`
-- [ ] Create main `named` table with all fields
-- [ ] Add audit fields: `hash`, `audit_log_id`, `antecedent_hash`, `antecedent_audit_log_id`
-- [ ] Add foreign key to `audit_log(id)` for `audit_log_id`
-- [ ] Create `named_audit` table with same structure
-- [ ] Use composite primary key `(id, audit_log_id)` for audit table
-- [ ] Create index `idx_named_audit_id` on `named_audit(id)`
-- [ ] NO foreign key cascade from audit to main table (preserve audit on deletion)
-
-**File**: `business-core-postgres/cleanup/0XX_cleanup_named.sql`
-- [ ] Drop `named_audit` table
-- [ ] Drop `named` table
-
-### 6. Testing Requirements
-
-Each repository method must have at least one test:
-- [ ] `test_create_batch` - Create multiple entities
-- [ ] `test_create_batch_empty` - Empty batch handling
-- [ ] `test_load_batch` - Load by IDs
-- [ ] `test_load_batch_not_found` - Handle missing entities
-- [ ] `test_update_batch` - Update entities
-- [ ] `test_update_batch_no_change` - No-op when unchanged
-- [ ] `test_delete_batch` - Delete entities
-- [ ] `test_delete_batch_not_found` - Handle missing entities
-- [ ] `test_exist_by_ids` - Check existence
-- [ ] `test_load_audits` - Verify audit history with pagination
-- [ ] `test_load_audits_empty` - Handle non-existent entity
-
-## Key Implementation Notes
-
-1. **No Indexing**: This entity does not have an index table or hash-based lookups
-2. **No Caching**: No in-memory cache infrastructure
-3. **Audit Trail**: Complete audit history with hash chain verification
-4. **Field Names**: Fix duplicate field names in example - use l1, l2, l3, l4 suffixes
-5. **String Sizes**: 50 chars for names, 255 chars for descriptions
-6. **Audit First**: Always insert audit record before modifying main entity
-7. **Hash Verification**: Set hash=0 before computing hash value
-8. **Optional Fields**: All language variants except l1 are optional
+### SQL Query Pattern for Update
+```sql
+UPDATE named SET
+    entity_type = $2,
+    name_l1 = $3,
+    name_l2 = $4,
+    name_l3 = $5,
+    name_l4 = $6,
+    description_l1 = $7,
+    description_l2 = $8,
+    description_l3 = $9,
+    description_l4 = $10,
+    hash = $11,
+    audit_log_id = $12,
+    antecedent_hash = $13,
+    antecedent_audit_log_id = $14
+WHERE id = $1
+  AND hash = $13
+  AND audit_log_id = $14
+```
 
 ## Validation Checklist
+- [ ] All model traits implemented correctly
+- [ ] Repository methods include audit_log_id parameter
+- [ ] Hash computation follows the pattern (entity with hash=0)
+- [ ] Audit records inserted before entity modifications
+- [ ] Change detection in update_batch prevents redundant audit records
+- [ ] Delete operations create final audit record
+- [ ] All repository methods have comprehensive tests (at least one test per method)
+- [ ] Cache notification test implemented
+- [ ] Test helper functions in test_utils.rs
+- [ ] Factory pattern implemented for repository creation
+- [ ] Module files updated correctly
 
-After implementation, verify:
-- [ ] Model has all required audit fields
-- [ ] `Identifiable` and `Auditable` traits implemented
-- [ ] No `IndexAware` or `Indexable` traits (not needed)
-- [ ] Repository has no cache infrastructure
-- [ ] All CRUD operations follow audit-first pattern
-- [ ] Hash computation uses entity with hash=0
-- [ ] Tests pass for all repository methods
-- [ ] Migration creates main and audit tables
-- [ ] Audit table has composite PK (id, audit_log_id)
-- [ ] No ON DELETE CASCADE from audit to main
-- [ ] `EntityType::Named` added and integrated
+## Expected File Structure
+```
+business-core-db/src/models/description/
+  ├── mod.rs (updated)
+  ├── named.rs (new)
+  └── named_entity_type.rs (existing)
 
-## Cleanup Tasks
+business-core-postgres/src/repository/description/
+  ├── mod.rs (new)
+  ├── factory.rs (new)
+  └── named_repository/
+      ├── mod.rs (new)
+      ├── repo_impl.rs (new)
+      ├── create_batch.rs (new)
+      ├── load_batch.rs (new)
+      ├── load_audits.rs (new)
+      ├── update_batch.rs (new)
+      ├── delete_batch.rs (new)
+      ├── exist_by_ids.rs (new)
+      └── test_utils.rs (new)
+```
 
-- [ ] Delete `business-core-db/src/models/description/named_example.rs` after implementation is complete
-- [ ] Verify no references to the example file remain
-
-## References
-
-- **Skill Documentation**: `docs/skills/entity_template/entity_with_audit.md`
-- **Reference Model**: `business-core-db/src/models/reason_and_purpose/reason_reference.rs`
-- **Reference Repository**: `business-core-postgres/src/repository/reason_and_purpose/reason_reference_repository/`
+## Notes
+- The entity_type field uses the existing `NamedEntityType` enum from `named_entity_type.rs`
+- Serialization functions already exist: `serialize_entity_type` and `deserialize_entity_type`
+- No additional enums need to be created
+- The entity is auditable AND indexable, so follow the full auditable entity template
+- Entity has NO secondary index field.  Field (entity_type) is not an index field

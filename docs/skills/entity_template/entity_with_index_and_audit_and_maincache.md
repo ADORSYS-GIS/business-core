@@ -705,7 +705,7 @@ impl {Entity}RepositoryImpl {
 CREATE TYPE IF NOT EXISTS {enum_name} AS ENUM ('Variant1', 'Variant2');
 
 -- Enum for auditable entity types
-CREATE TYPE entity_type AS ENUM ('LOCATION', ...);
+CREATE TYPE audit_entity_type AS ENUM ('Location', ...);
 
 -- Main {Entity} Table
 CREATE TABLE IF NOT EXISTS {table_name} (
@@ -767,7 +767,7 @@ CREATE INDEX IF NOT EXISTS idx_{table_name}_audit_id
 CREATE TABLE IF NOT EXISTS audit_link (
     audit_log_id UUID NOT NULL REFERENCES audit_log(id),
     entity_id UUID NOT NULL,
-    entity_type entity_type NOT NULL,
+    entity_type audit_entity_type NOT NULL,
     PRIMARY KEY (audit_log_id, entity_id)
 );
 

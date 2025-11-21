@@ -15,7 +15,7 @@ pub struct CountryModel {
     
     pub iso2: HeaplessString<2>,
 
-    /// Reference to NamedModel with entity_type = Country
+    /// Reference to NamedModel with named_entity_type = Country
     pub name: Uuid,
 }
 

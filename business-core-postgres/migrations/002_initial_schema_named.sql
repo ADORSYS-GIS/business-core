@@ -1,12 +1,14 @@
 -- Migration: Initial Named Schema with Audit Support
 -- Description: Creates named-related tables with audit trail.
--- Note: This entity is NOT indexed (no idx table, no cache, no triggers).
+
+-- Named Entity Type Enum
+CREATE TYPE named_entity_type AS ENUM ('Location', 'Person');
 
 -- Main Named Table
 -- Stores the current state of the named entity with multilingual support.
 CREATE TABLE IF NOT EXISTS named (
     id UUID PRIMARY KEY,
-    entity_type entity_type NOT NULL,
+    entity_type named_entity_type NOT NULL,
     name_l1 VARCHAR(50) NOT NULL,
     name_l2 VARCHAR(50),
     name_l3 VARCHAR(50),
@@ -21,12 +23,19 @@ CREATE TABLE IF NOT EXISTS named (
     antecedent_audit_log_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
 );
 
+-- Named Index Table
+-- Contains fields for application-layer indexing and caching.
+CREATE TABLE IF NOT EXISTS named_idx (
+    id UUID PRIMARY KEY REFERENCES named(id) ON DELETE CASCADE,
+    entity_type named_entity_type NOT NULL
+);
+
 -- Named Audit Table
 -- Stores a complete, immutable snapshot of the entity at each change.
 CREATE TABLE IF NOT EXISTS named_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
-    entity_type entity_type NOT NULL,
+    entity_type named_entity_type NOT NULL,
     name_l1 VARCHAR(50) NOT NULL,
     name_l2 VARCHAR(50),
     name_l3 VARCHAR(50),
@@ -53,6 +62,13 @@ CREATE TABLE IF NOT EXISTS named_audit (
 CREATE INDEX IF NOT EXISTS idx_named_audit_id
     ON named_audit(id);
 
--- Update entity_type enum to include NAMED
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'NAMED';
+-- Create trigger for named_idx table to notify listeners of changes
+DROP TRIGGER IF EXISTS named_idx_notify ON named_idx;
+CREATE TRIGGER named_idx_notify
+    AFTER INSERT OR UPDATE OR DELETE ON named_idx
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_cache_change();
+
+-- Update audit_entity_type enum to include Named
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'Named';

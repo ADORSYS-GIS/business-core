@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::repository::exist_by_ids::ExistByIds;
-use sqlx::{Postgres, Row};
+use sqlx::Postgres;
 use std::error::Error;
 use uuid::Uuid;
 
@@ -11,25 +11,10 @@ impl NamedRepositoryImpl {
         repo: &NamedRepositoryImpl,
         ids: &[Uuid],
     ) -> Result<Vec<(Uuid, bool)>, Box<dyn Error + Send + Sync>> {
-        if ids.is_empty() {
-            return Ok(Vec::new());
-        }
-        
-        let query = r#"SELECT id FROM named WHERE id = ANY($1)"#;
-        let rows = {
-            let mut tx = repo.executor.tx.lock().await;
-            let transaction = tx.as_mut().ok_or("Transaction has been consumed")?;
-            sqlx::query(query).bind(ids).fetch_all(&mut **transaction).await?
-        };
-        
-        let existing_ids: std::collections::HashSet<Uuid> = rows
-            .iter()
-            .map(|row| row.get("id"))
-            .collect();
-        
         let mut result = Vec::new();
+        let cache = repo.named_idx_cache.read().await;
         for &id in ids {
-            result.push((id, existing_ids.contains(&id)));
+            result.push((id, cache.contains_primary(&id)));
         }
         Ok(result)
     }
@@ -44,19 +29,12 @@ impl ExistByIds<Postgres> for NamedRepositoryImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::repository::description::named_repository::test_utils::create_test_named;
+    use crate::repository::person::test_utils::create_test_audit_log;
     use crate::test_helper::setup_test_context;
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::exist_by_ids::ExistByIds;
     use uuid::Uuid;
-
-    fn create_test_audit_log() -> business_core_db::models::audit::audit_log::AuditLogModel {
-        business_core_db::models::audit::audit_log::AuditLogModel {
-            id: uuid::Uuid::new_v4(),
-            updated_at: chrono::Utc::now(),
-            updated_by_person_id: uuid::Uuid::new_v4(),
-        }
-    }
+    use crate::repository::description::named_repository::test_utils::create_test_named;
 
     #[tokio::test]
     async fn test_exist_by_ids() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -67,8 +45,9 @@ mod tests {
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
-        let entity = create_test_named();
-        let saved = named_repo.create_batch(vec![entity], Some(audit_log.id)).await?;
+        let named = create_test_named("Existing Entity");
+
+        let saved = named_repo.create_batch(vec![named], Some(audit_log.id)).await?;
 
         let existing_id = saved[0].id;
         let non_existing_id = Uuid::new_v4();

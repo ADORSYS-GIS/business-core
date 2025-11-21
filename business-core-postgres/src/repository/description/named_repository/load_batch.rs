@@ -50,19 +50,12 @@ impl LoadBatch<Postgres, NamedModel> for NamedRepositoryImpl {
 
 #[cfg(test)]
 mod tests {
-    use crate::repository::description::named_repository::test_utils::create_test_named;
+    use crate::repository::person::test_utils::create_test_audit_log;
     use crate::test_helper::setup_test_context;
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::load_batch::LoadBatch;
     use uuid::Uuid;
-
-    fn create_test_audit_log() -> business_core_db::models::audit::audit_log::AuditLogModel {
-        business_core_db::models::audit::audit_log::AuditLogModel {
-            id: uuid::Uuid::new_v4(),
-            updated_at: chrono::Utc::now(),
-            updated_by_person_id: uuid::Uuid::new_v4(),
-        }
-    }
+    use crate::repository::description::named_repository::test_utils::create_test_named;
 
     #[tokio::test]
     async fn test_load_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -73,12 +66,13 @@ mod tests {
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
-        let mut entities = Vec::new();
-        for _ in 0..3 {
-            entities.push(create_test_named());
+        let mut named_entities = Vec::new();
+        for i in 0..3 {
+            let named = create_test_named(&format!("Test Entity {i}"));
+            named_entities.push(named);
         }
 
-        let saved = named_repo.create_batch(entities, Some(audit_log.id)).await?;
+        let saved = named_repo.create_batch(named_entities.clone(), Some(audit_log.id)).await?;
 
         let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
         let loaded = named_repo.load_batch(&ids).await?;
@@ -86,13 +80,15 @@ mod tests {
         assert_eq!(loaded.len(), 3);
         for item in loaded {
             assert!(item.is_some());
+            let named = item.unwrap();
+            assert!(named.name_l1.as_str().starts_with("Test Entity"));
         }
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_load_batch_not_found() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn test_load_batch_with_non_existing() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
         let named_repo = &ctx.description_repos().named_repository;
@@ -100,8 +96,9 @@ mod tests {
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
-        let entity = create_test_named();
-        let saved = named_repo.create_batch(vec![entity], Some(audit_log.id)).await?;
+        let named = create_test_named("Single Entity");
+
+        let saved = named_repo.create_batch(vec![named], Some(audit_log.id)).await?;
 
         let mut ids = vec![saved[0].id];
         ids.push(Uuid::new_v4()); // Add non-existing ID

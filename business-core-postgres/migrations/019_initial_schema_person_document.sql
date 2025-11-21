@@ -123,6 +123,6 @@ CREATE TABLE IF NOT EXISTS person_document_audit (
 CREATE INDEX IF NOT EXISTS idx_person_document_audit_id
     ON person_document_audit(id);
 
--- Update entity_type enum to include DOCUMENT
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'DOCUMENT';
+-- Update audit_entity_type enum to include Document
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'Document';

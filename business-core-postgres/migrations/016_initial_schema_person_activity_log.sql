@@ -45,6 +45,6 @@ CREATE TABLE IF NOT EXISTS person_activity_log_audit (
 CREATE INDEX IF NOT EXISTS idx_person_activity_log_audit_id
     ON person_activity_log_audit(id);
 
--- Update entity_type enum to include ACTIVITY_LOG
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'ACTIVITY_LOG';
+-- Update audit_entity_type enum to include ActivityLog
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'ActivityLog';

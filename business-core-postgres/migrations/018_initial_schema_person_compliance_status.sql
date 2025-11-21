@@ -2,9 +2,9 @@
 -- Description: Creates person_compliance_status-related tables with audit trail.
 -- Note: This entity is NOT indexed (no idx table, no cache, no triggers).
 
--- Update entity_type enum to include COMPLIANCE_STATUS
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'COMPLIANCE_STATUS';
+-- Update audit_entity_type enum to include ComplianceStatus
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'ComplianceStatus';
 
 -- Create kyc_status ENUM type
 CREATE TYPE kyc_status AS ENUM (
