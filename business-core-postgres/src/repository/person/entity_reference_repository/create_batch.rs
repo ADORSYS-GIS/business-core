@@ -48,17 +48,15 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference_audit
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    (id, person_id, entity_role, reference_external_id, reference_details, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_id)
                 .bind(item.entity_role)
                 .bind(item.reference_external_id.as_str())
-                .bind(item.reference_details_l1.as_deref())
-                .bind(item.reference_details_l2.as_deref())
-                .bind(item.reference_details_l3.as_deref())
+                .bind(item.reference_details)
                 .bind(item.related_person_id)
                 .bind(item.start_date)
                 .bind(item.end_date)
@@ -74,17 +72,15 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    (id, person_id, entity_role, reference_external_id, reference_details, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_id)
                 .bind(item.entity_role)
                 .bind(item.reference_external_id.as_str())
-                .bind(item.reference_details_l1.as_deref())
-                .bind(item.reference_details_l2.as_deref())
-                .bind(item.reference_details_l3.as_deref())
+                .bind(item.reference_details)
                 .bind(item.related_person_id)
                 .bind(item.start_date)
                 .bind(item.end_date)
@@ -308,17 +304,15 @@ mod tests {
         sqlx::query(
             r#"
             INSERT INTO entity_reference
-            (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            (id, person_id, entity_role, reference_external_id, reference_details, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             "#,
         )
         .bind(final_entity_reference.id)
         .bind(final_entity_reference.person_id)
         .bind(final_entity_reference.entity_role)
         .bind(final_entity_reference.reference_external_id.as_str())
-        .bind(final_entity_reference.reference_details_l1.as_deref())
-        .bind(final_entity_reference.reference_details_l2.as_deref())
-        .bind(final_entity_reference.reference_details_l3.as_deref())
+        .bind(final_entity_reference.reference_details)
         .bind(final_entity_reference.related_person_id)
         .bind(final_entity_reference.start_date)
         .bind(final_entity_reference.end_date)

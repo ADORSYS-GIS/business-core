@@ -6,9 +6,7 @@ CREATE TABLE IF NOT EXISTS locality (
     id UUID PRIMARY KEY,
     country_subdivision_id UUID NOT NULL REFERENCES country_subdivision(id) ON DELETE CASCADE,
     code VARCHAR(50) NOT NULL UNIQUE,
-    name_l1 VARCHAR(50) NOT NULL,
-    name_l2 VARCHAR(50),
-    name_l3 VARCHAR(50)
+    name UUID NOT NULL
 );
 
 -- Locality Index Table

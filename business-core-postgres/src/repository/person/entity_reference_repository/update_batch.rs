@@ -54,17 +54,15 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference_audit
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                    (id, person_id, entity_role, reference_external_id, reference_details, related_person_id, start_date, end_date, status, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_id)
                 .bind(item.entity_role)
                 .bind(item.reference_external_id.as_str())
-                .bind(item.reference_details_l1.as_deref())
-                .bind(item.reference_details_l2.as_deref())
-                .bind(item.reference_details_l3.as_deref())
+                .bind(item.reference_details)
                 .bind(item.related_person_id)
                 .bind(item.start_date)
                 .bind(item.end_date)
@@ -80,19 +78,16 @@ impl EntityReferenceRepositoryImpl {
                     r#"
                     UPDATE entity_reference SET
                     person_id = $2, entity_role = $3, reference_external_id = $4,
-                    reference_details_l1 = $5, reference_details_l2 = $6, reference_details_l3 = $7,
-                    related_person_id = $8, start_date = $9, end_date = $10, status = $11,
-                    antecedent_hash = $12, antecedent_audit_log_id = $13, hash = $14, audit_log_id = $15
-                    WHERE id = $1 AND hash = $16 AND audit_log_id = $17
+                    reference_details = $5, related_person_id = $6, start_date = $7, end_date = $8, status = $9,
+                    antecedent_hash = $10, antecedent_audit_log_id = $11, hash = $12, audit_log_id = $13
+                    WHERE id = $1 AND hash = $14 AND audit_log_id = $15
                     "#,
                 )
                 .bind(item.id)
                 .bind(item.person_id)
                 .bind(item.entity_role)
                 .bind(item.reference_external_id.as_str())
-                .bind(item.reference_details_l1.as_deref())
-                .bind(item.reference_details_l2.as_deref())
-                .bind(item.reference_details_l3.as_deref())
+                .bind(item.reference_details)
                 .bind(item.related_person_id)
                 .bind(item.start_date)
                 .bind(item.end_date)

@@ -115,9 +115,7 @@ pub struct EntityReferenceModel {
     /// - find_by_reference_external_id_hash
     pub reference_external_id: HeaplessString<50>,
 
-    pub reference_details_l1: Option<HeaplessString<50>>,
-    pub reference_details_l2: Option<HeaplessString<50>>,
-    pub reference_details_l3: Option<HeaplessString<50>>,
+    pub reference_details: Option<Uuid>,
 
     /// The person ID of the individual related to the primary person
     pub related_person_id: Option<Uuid>,

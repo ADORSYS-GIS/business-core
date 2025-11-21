@@ -1,5 +1,5 @@
 use business_core_db::models::person::entity_reference::{EntityReferenceIdxModel, EntityReferenceModel};
-use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
+use crate::utils::{get_heapless_string, TryFromRow};
 use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
 use postgres_index_cache::TransactionAwareIdxModelCache;
 use parking_lot::RwLock as ParkingRwLock;
@@ -76,9 +76,7 @@ impl TryFromRow<PgRow> for EntityReferenceModel {
             person_id: row.get("person_id"),
             entity_role: row.get("entity_role"),
             reference_external_id: get_heapless_string(row, "reference_external_id")?,
-            reference_details_l1: get_optional_heapless_string(row, "reference_details_l1")?,
-            reference_details_l2: get_optional_heapless_string(row, "reference_details_l2")?,
-            reference_details_l3: get_optional_heapless_string(row, "reference_details_l3")?,
+            reference_details: row.try_get("reference_details").ok(),
             related_person_id: row.try_get("related_person_id").ok(),
             start_date: row.try_get("start_date").ok(),
             end_date: row.try_get("end_date").ok(),

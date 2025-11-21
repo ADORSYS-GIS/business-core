@@ -286,13 +286,11 @@ mod tests {
             .expect("Failed to insert country subdivision");
 
         // Then insert the locality record
-        sqlx::query("INSERT INTO locality (id, country_subdivision_id, code, name_l1, name_l2, name_l3) VALUES ($1, $2, $3, $4, $5, $6)")
+        sqlx::query("INSERT INTO locality (id, country_subdivision_id, code, name) VALUES ($1, $2, $3, $4)")
             .bind(test_locality.id)
             .bind(test_locality.country_subdivision_id)
             .bind(test_locality.code.as_str())
-            .bind(test_locality.name_l1.as_str())
-            .bind(test_locality.name_l2.as_ref().map(|s| s.as_str()))
-            .bind(test_locality.name_l3.as_ref().map(|s| s.as_str()))
+            .bind(test_locality.name)
             .execute(&**pool)
             .await
             .expect("Failed to insert locality");
