@@ -1,5 +1,5 @@
 use business_core_db::models::person::country::{CountryIdxModel, CountryModel};
-use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
+use crate::utils::{get_heapless_string, TryFromRow};
 use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
 use postgres_index_cache::TransactionAwareIdxModelCache;
 use parking_lot::RwLock as ParkingRwLock;
@@ -64,9 +64,7 @@ impl TryFromRow<PgRow> for CountryModel {
         Ok(CountryModel {
             id: row.get("id"),
             iso2: get_heapless_string(row, "iso2")?,
-            name_l1: get_heapless_string(row, "name_l1")?,
-            name_l2: get_optional_heapless_string(row, "name_l2")?,
-            name_l3: get_optional_heapless_string(row, "name_l3")?,
+            name: row.get("name"),
         })
     }
 }

@@ -1,5 +1,5 @@
 use business_core_db::models::person::document::DocumentModel;
-use crate::utils::{get_optional_heapless_string, TryFromRow};
+use crate::utils::TryFromRow;
 use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
 use sqlx::{postgres::PgRow, Row};
 use std::error::Error;
@@ -17,10 +17,12 @@ impl DocumentRepositoryImpl {
 
 impl TryFromRow<PgRow> for DocumentModel {
     fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
+        use crate::utils::get_optional_heapless_string;
+        
         Ok(DocumentModel {
             id: row.get("id"),
             person_id: row.get("person_id"),
-            document_type: get_optional_heapless_string(row, "document_type")?.ok_or("document_type is required")?,
+            document_type: row.get("document_type"),
             document_path: get_optional_heapless_string(row, "document_path")?,
             status: row.get("status"),
             predecessor_1: row.try_get("predecessor_1").ok(),

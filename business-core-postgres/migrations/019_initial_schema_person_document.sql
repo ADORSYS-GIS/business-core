@@ -5,12 +5,83 @@
 -- Create DocumentStatus enum
 CREATE TYPE document_status AS ENUM ('Uploaded', 'Verified', 'Rejected', 'Expired');
 
+-- Create DocumentType enum
+CREATE TYPE document_type AS ENUM (
+    -- Identity Documents
+    'Passport',
+    'NationalIdCard',
+    'DriverLicense',
+    'ResidencePermit',
+    'VoterIdCard',
+    'AsylumCard',
+    'IdApplicationReceipt',
+    'BirthCertificate',
+    -- Proof of Address
+    'UtilityBill',
+    'BankStatement',
+    'TaxNotice',
+    'TaxBill',
+    'LeaseAgreement',
+    'PropertyDeed',
+    'LandTitle',
+    -- Financial/Income Documents
+    'EmploymentLetter',
+    'PaySlip',
+    'TaxReturn',
+    'IncomeStatement',
+    'FinancialStatement',
+    'CreditReport',
+    -- Business Documents
+    'CertificateOfIncorporation',
+    'ArticlesOfAssociation',
+    'TaxIdentificationNumber',
+    'BusinessLicense',
+    'ShareholderRegister',
+    'BusinessPlan',
+    'AuditorsReport',
+    -- Compliance/Legal
+    'ProofOfFunds',
+    'CriminalRecordCheck',
+    'CourtOrder',
+    'CourtDocument',
+    'PowerOfAttorney',
+    'BeneficialOwnershipDeclaration',
+    'MarriageCertificate',
+    'DeathCertificate',
+    'PoliceReport',
+    -- Vehicle/Property
+    'CarTitle',
+    -- Insurance Documents
+    'HealthInsurance',
+    'LifeInsurance',
+    'PropertyInsurance',
+    -- Banking/Microfinance Specific
+    'LoanApplication',
+    'CollateralDocument',
+    'GuarantorLetter',
+    'SavingsGroupMembership',
+    'AgriculturalLoanDocumentation',
+    'ReferenceLetter',
+    -- Islamic Banking Specific
+    'ShariaComplianceCertificate',
+    'WakalaAgreement',
+    'MudarabaAgreement',
+    'MurabahaAgreement',
+    'IjaraAgreement',
+    'MusharakaAgreement',
+    'TakafulCertificate',
+    'ZakatCertificate',
+    'HalalCertification',
+    -- Catch-all
+    'Other'
+);
+
 -- Main Document Table
 -- Stores the current state of the document.
 CREATE TABLE IF NOT EXISTS person_document (
     id UUID PRIMARY KEY,
     person_id UUID NOT NULL,
-    document_type VARCHAR(50) NOT NULL,
+    document_type document_type NOT NULL,
     document_path VARCHAR(500),
     status document_status NOT NULL,
     predecessor_1 UUID,
@@ -28,7 +99,7 @@ CREATE TABLE IF NOT EXISTS person_document_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
     person_id UUID NOT NULL,
-    document_type VARCHAR(50) NOT NULL,
+    document_type document_type NOT NULL,
     document_path VARCHAR(500),
     status document_status NOT NULL,
     predecessor_1 UUID,

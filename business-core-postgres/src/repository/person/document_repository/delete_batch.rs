@@ -54,7 +54,7 @@ impl DocumentRepositoryImpl {
             )
             .bind(final_audit_entity.id)
             .bind(final_audit_entity.person_id)
-            .bind(final_audit_entity.document_type.as_str())
+            .bind(final_audit_entity.document_type)
             .bind(final_audit_entity.document_path.as_deref())
             .bind(final_audit_entity.status)
             .bind(final_audit_entity.predecessor_1)
