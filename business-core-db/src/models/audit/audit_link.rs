@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use sqlx::FromRow;
-use super::EntityType;
+use super::AuditEntityType;
 
 /// # Documentation
 /// - This struct is used to track all entities modified in a single transaction.
@@ -9,5 +9,5 @@ use super::EntityType;
 pub struct AuditLinkModel {
     pub audit_log_id: Uuid,
     pub entity_id: Uuid,
-    pub entity_type: EntityType,
+    pub entity_type: AuditEntityType,
 }

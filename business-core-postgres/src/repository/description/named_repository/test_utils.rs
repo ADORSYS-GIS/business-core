@@ -1,4 +1,5 @@
 use business_core_db::models::description::named::NamedModel;
+use business_core_db::models::description::named_entity_type::NamedEntityType;
 use heapless::String as HeaplessString;
 use uuid::Uuid;
 
@@ -6,6 +7,7 @@ use uuid::Uuid;
 pub fn create_test_named() -> NamedModel {
     NamedModel {
         id: Uuid::new_v4(),
+        entity_type: NamedEntityType::Person,
         name_l1: HeaplessString::try_from("Test Name").unwrap(),
         name_l2: None,
         name_l3: None,
@@ -25,6 +27,7 @@ pub fn create_test_named() -> NamedModel {
 pub fn create_test_named_with_all_languages() -> NamedModel {
     NamedModel {
         id: Uuid::new_v4(),
+        entity_type: NamedEntityType::Person,
         name_l1: HeaplessString::try_from("English Name").unwrap(),
         name_l2: Some(HeaplessString::try_from("French Name").unwrap()),
         name_l3: Some(HeaplessString::try_from("German Name").unwrap()),

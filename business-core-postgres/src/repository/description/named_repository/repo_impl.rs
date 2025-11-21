@@ -19,6 +19,7 @@ impl TryFromRow<PgRow> for NamedModel {
     fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
         Ok(NamedModel {
             id: row.get("id"),
+            entity_type: row.get("entity_type"),
             name_l1: get_heapless_string(row, "name_l1")?,
             name_l2: get_optional_heapless_string(row, "name_l2")?,
             name_l3: get_optional_heapless_string(row, "name_l3")?,

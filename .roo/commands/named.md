@@ -15,6 +15,7 @@ Generate a complete auditable entity implementation for the `Named` entity follo
 ```rust
 pub struct NamedModel {
     pub id: Uuid,
+    pub entity_type: NamedEntityType,
     pub name_l1: HeaplessString<50>,
     pub name_l2: Option<HeaplessString<50>>,
     pub name_l3: Option<HeaplessString<50>>,

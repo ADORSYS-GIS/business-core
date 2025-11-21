@@ -4,6 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
+use super::named_entity_type::NamedEntityType;
 
 /// # Documentation
 /// Named entity provides multilingual support for names and descriptions.
@@ -13,6 +14,9 @@ use crate::models::identifiable::Identifiable;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct NamedModel {
     pub id: Uuid,
+
+    /// Entity type indicating which table this Named entity is connected to
+    pub entity_type: NamedEntityType,
 
     /// Primary name (language 1) - required
     pub name_l1: HeaplessString<50>,

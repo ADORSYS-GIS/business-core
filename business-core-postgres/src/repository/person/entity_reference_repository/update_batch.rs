@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{AuditLinkModel, EntityType},
+    audit::{AuditLinkModel, AuditEntityType},
     person::entity_reference::EntityReferenceModel,
 };
 use business_core_db::models::index_aware::IndexAware;
@@ -127,7 +127,7 @@ impl EntityReferenceRepositoryImpl {
                 let audit_link = AuditLinkModel {
                     audit_log_id,
                     entity_id: item.id,
-                    entity_type: EntityType::EntityReference,
+                    entity_type: AuditEntityType::EntityReference,
                 };
                 sqlx::query(
                     r#"

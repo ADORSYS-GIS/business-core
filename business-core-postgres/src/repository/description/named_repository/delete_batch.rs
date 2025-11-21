@@ -1,4 +1,4 @@
-use business_core_db::models::audit::{audit_link::AuditLinkModel, entity_type::EntityType};
+use business_core_db::models::audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType};
 use async_trait::async_trait;
 use business_core_db::repository::load_batch::LoadBatch;
 use business_core_db::repository::delete_batch::DeleteBatch;
@@ -48,11 +48,12 @@ impl NamedRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO named_audit
-                (id, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 "#,
             )
             .bind(final_audit_entity.id)
+            .bind(final_audit_entity.entity_type)
             .bind(final_audit_entity.name_l1.as_str())
             .bind(final_audit_entity.name_l2.as_deref())
             .bind(final_audit_entity.name_l3.as_deref())
@@ -78,7 +79,7 @@ impl NamedRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::Named,
+                entity_type: AuditEntityType::Named,
             };
             let audit_link_query = sqlx::query(
                 r#"

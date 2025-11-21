@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{audit_link::AuditLinkModel, entity_type::EntityType},
+    audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType},
     description::named::NamedModel,
 };
 use business_core_db::repository::update_batch::UpdateBatch;
@@ -57,11 +57,12 @@ impl NamedRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO named_audit
-                (id, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 "#,
             )
             .bind(entity.id)
+            .bind(entity.entity_type)
             .bind(entity.name_l1.as_str())
             .bind(entity.name_l2.as_deref())
             .bind(entity.name_l3.as_deref())
@@ -79,24 +80,26 @@ impl NamedRepositoryImpl {
             let rows_affected = sqlx::query(
                 r#"
                 UPDATE named SET
-                    name_l1 = $2,
-                    name_l2 = $3,
-                    name_l3 = $4,
-                    name_l4 = $5,
-                    description_l1 = $6,
-                    description_l2 = $7,
-                    description_l3 = $8,
-                    description_l4 = $9,
-                    antecedent_hash = $10,
-                    antecedent_audit_log_id = $11,
-                    hash = $12,
-                    audit_log_id = $13
+                    entity_type = $2,
+                    name_l1 = $3,
+                    name_l2 = $4,
+                    name_l3 = $5,
+                    name_l4 = $6,
+                    description_l1 = $7,
+                    description_l2 = $8,
+                    description_l3 = $9,
+                    description_l4 = $10,
+                    antecedent_hash = $11,
+                    antecedent_audit_log_id = $12,
+                    hash = $13,
+                    audit_log_id = $14
                 WHERE id = $1
-                  AND hash = $14
-                  AND audit_log_id = $15
+                  AND hash = $15
+                  AND audit_log_id = $16
                 "#,
             )
             .bind(entity.id)
+            .bind(entity.entity_type)
             .bind(entity.name_l1.as_str())
             .bind(entity.name_l2.as_deref())
             .bind(entity.name_l3.as_deref())
@@ -123,7 +126,7 @@ impl NamedRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::Named,
+                entity_type: AuditEntityType::Named,
             };
             let audit_link_query = sqlx::query(
                 r#"

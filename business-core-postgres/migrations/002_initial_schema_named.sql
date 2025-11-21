@@ -6,6 +6,7 @@
 -- Stores the current state of the named entity with multilingual support.
 CREATE TABLE IF NOT EXISTS named (
     id UUID PRIMARY KEY,
+    entity_type entity_type NOT NULL,
     name_l1 VARCHAR(50) NOT NULL,
     name_l2 VARCHAR(50),
     name_l3 VARCHAR(50),
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS named (
 CREATE TABLE IF NOT EXISTS named_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
+    entity_type entity_type NOT NULL,
     name_l1 VARCHAR(50) NOT NULL,
     name_l2 VARCHAR(50),
     name_l3 VARCHAR(50),

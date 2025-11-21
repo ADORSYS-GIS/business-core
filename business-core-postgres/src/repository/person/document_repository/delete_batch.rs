@@ -1,4 +1,4 @@
-use business_core_db::models::audit::{audit_link::AuditLinkModel, entity_type::EntityType};
+use business_core_db::models::audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType};
 use async_trait::async_trait;
 use business_core_db::repository::load_batch::LoadBatch;
 use business_core_db::repository::delete_batch::DeleteBatch;
@@ -77,7 +77,7 @@ impl DocumentRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::Document,
+                entity_type: AuditEntityType::Document,
             };
             let audit_link_query = sqlx::query(
                 r#"
