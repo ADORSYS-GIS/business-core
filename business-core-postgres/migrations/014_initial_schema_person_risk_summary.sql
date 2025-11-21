@@ -4,7 +4,6 @@
 -- RiskSummary Table
 CREATE TABLE IF NOT EXISTS risk_summary (
     id UUID PRIMARY KEY,
-    person_id UUID NOT NULL REFERENCES person(id) ON DELETE CASCADE,
     current_rating risk_rating NOT NULL,
     last_assessment_date TIMESTAMPTZ NOT NULL,
     flags_01 VARCHAR(200) NOT NULL,
@@ -16,8 +15,7 @@ CREATE TABLE IF NOT EXISTS risk_summary (
 
 -- RiskSummary Index Table
 CREATE TABLE IF NOT EXISTS risk_summary_idx (
-    id UUID PRIMARY KEY REFERENCES risk_summary(id) ON DELETE CASCADE,
-    person_id UUID NOT NULL
+    id UUID PRIMARY KEY REFERENCES risk_summary(id) ON DELETE CASCADE
 );
 
 -- Create trigger for risk_summary_idx table to notify listeners of changes

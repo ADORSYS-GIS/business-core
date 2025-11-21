@@ -64,27 +64,22 @@ mod tests {
     use business_core_db::repository::create_batch::CreateBatch;
     use business_core_db::repository::delete_batch::DeleteBatch;
     use uuid::Uuid;
-    use super::super::test_utils::test_utils::{create_test_risk_summary, create_test_person};
+    use super::super::test_utils::test_utils::create_test_risk_summary;
     use crate::repository::person::test_utils::create_test_audit_log;
 
     #[tokio::test]
     async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let ctx = setup_test_context().await?;
         let audit_log_repo = &ctx.audit_repos().audit_log_repository;
-        let person_repo = &ctx.person_repos().person_repository;
         let risk_summary_repo = &ctx.person_repos().risk_summary_repository;
 
         // Create audit log
         let audit_log = create_test_audit_log();
         audit_log_repo.create(&audit_log).await?;
 
-        // Create person
-        let person = create_test_person();
-        person_repo.create_batch(vec![person.clone()], Some(audit_log.id)).await?;
-
         // Create risk summaries
-        let risk_summary1 = create_test_risk_summary(person.id);
-        let risk_summary2 = create_test_risk_summary(person.id);
+        let risk_summary1 = create_test_risk_summary();
+        let risk_summary2 = create_test_risk_summary();
 
         let saved = risk_summary_repo.create_batch(vec![risk_summary1.clone(), risk_summary2.clone()], Some(audit_log.id)).await?;
 

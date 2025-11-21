@@ -6,10 +6,9 @@ pub mod test_utils {
     use uuid::Uuid;
     use chrono::Utc;
 
-    pub fn create_test_risk_summary(person_id: Uuid) -> RiskSummaryModel {
+    pub fn create_test_risk_summary() -> RiskSummaryModel {
         RiskSummaryModel {
             id: Uuid::new_v4(),
-            person_id,
             current_rating: RiskRating::Low,
             last_assessment_date: Utc::now(),
             flags_01: HeaplessString::try_from("flag1").unwrap(),

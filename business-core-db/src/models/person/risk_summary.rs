@@ -12,7 +12,6 @@ use super::common_enums::RiskRating;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct RiskSummaryModel {
     pub id: Uuid,
-    pub person_id: Uuid,
     #[serde(serialize_with = "super::common_enums::serialize_risk_rating", deserialize_with = "super::common_enums::deserialize_risk_rating")]
     pub current_rating: RiskRating,
     pub last_assessment_date: DateTime<Utc>,
@@ -27,7 +26,6 @@ pub struct RiskSummaryModel {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct RiskSummaryIdxModel {
     pub id: Uuid,
-    pub person_id: Uuid,
 }
 
 // Trait implementations
@@ -55,7 +53,6 @@ impl IndexAware for RiskSummaryModel {
     fn to_index(&self) -> Self::IndexType {
         RiskSummaryIdxModel {
             id: self.id,
-            person_id: self.person_id,
         }
     }
 }
@@ -74,9 +71,7 @@ impl Indexable for RiskSummaryIdxModel {
     }
 
     fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
-        let mut keys = HashMap::new();
-        keys.insert("person_id".to_string(), Some(self.person_id));
-        keys
+        HashMap::new()
     }
 }
 

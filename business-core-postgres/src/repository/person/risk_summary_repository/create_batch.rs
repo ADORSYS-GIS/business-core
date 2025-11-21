@@ -28,12 +28,11 @@ impl RiskSummaryRepositoryImpl {
             // Execute main insert
             sqlx::query(
                 r#"
-                INSERT INTO risk_summary (id, person_id, current_rating, last_assessment_date, flags_01, flags_02, flags_03, flags_04, flags_05)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                INSERT INTO risk_summary (id, current_rating, last_assessment_date, flags_01, flags_02, flags_03, flags_04, flags_05)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 "#,
             )
             .bind(item.id)
-            .bind(item.person_id)
             .bind(item.current_rating)
             .bind(item.last_assessment_date)
             .bind(item.flags_01.as_str())
@@ -48,12 +47,11 @@ impl RiskSummaryRepositoryImpl {
             let idx = item.to_index();
             sqlx::query(
                 r#"
-                INSERT INTO risk_summary_idx (id, person_id)
-                VALUES ($1, $2)
+                INSERT INTO risk_summary_idx (id)
+                VALUES ($1)
                 "#,
             )
             .bind(idx.id)
-            .bind(idx.person_id)
             .execute(&mut **transaction)
             .await?;
 
@@ -112,8 +110,8 @@ mod tests {
         person_repo.create_batch(vec![person.clone()], Some(audit_log.id)).await?;
 
         // Create risk summaries
-        let risk_summary1 = create_test_risk_summary(person.id);
-        let risk_summary2 = create_test_risk_summary(person.id);
+        let risk_summary1 = create_test_risk_summary();
+        let risk_summary2 = create_test_risk_summary();
 
         let saved = risk_summary_repo.create_batch(vec![risk_summary1.clone(), risk_summary2.clone()], Some(audit_log.id)).await?;
 
@@ -173,16 +171,15 @@ mod tests {
             .expect("Failed to insert person");
 
         // Create a test risk summary
-        let test_risk_summary = create_test_risk_summary(person.id);
+        let test_risk_summary = create_test_risk_summary();
         let risk_summary_idx = test_risk_summary.to_index();
     
         // Give listener time to start and establish connection
         sleep(Duration::from_millis(2000)).await;
     
         // Insert the risk summary record directly into database
-        sqlx::query("INSERT INTO risk_summary (id, person_id, current_rating, last_assessment_date, flags_01, flags_02, flags_03, flags_04, flags_05) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)")
+        sqlx::query("INSERT INTO risk_summary (id, current_rating, last_assessment_date, flags_01, flags_02, flags_03, flags_04, flags_05) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)")
             .bind(test_risk_summary.id)
-            .bind(test_risk_summary.person_id)
             .bind(test_risk_summary.current_rating)
             .bind(test_risk_summary.last_assessment_date)
             .bind(test_risk_summary.flags_01.as_str())
@@ -195,9 +192,8 @@ mod tests {
             .expect("Failed to insert risk_summary");
     
         // Insert the index record directly into database (triggers notification)
-        sqlx::query("INSERT INTO risk_summary_idx (id, person_id) VALUES ($1, $2)")
+        sqlx::query("INSERT INTO risk_summary_idx (id) VALUES ($1)")
             .bind(risk_summary_idx.id)
-            .bind(risk_summary_idx.person_id)
             .execute(&**pool)
             .await
             .expect("Failed to insert risk_summary index");
@@ -220,7 +216,6 @@ mod tests {
         // Verify the cached data matches
         let cached_risk_summary = cached_risk_summary.unwrap();
         assert_eq!(cached_risk_summary.id, risk_summary_idx.id);
-        assert_eq!(cached_risk_summary.person_id, risk_summary_idx.person_id);
         
         // Drop the read lock before proceeding
         drop(cache);
