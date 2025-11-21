@@ -44,9 +44,10 @@ impl PortfolioRepositoryImpl {
                 r#"
                 INSERT INTO portfolio_audit
                 (id, person_id, total_accounts, total_balance, total_loan_outstanding_main, 
-                 total_loan_outstanding_grantor, risk_score, compliance_status, 
+                 total_loan_outstanding_grantor, risk_score, compliance_status,
+                 predecessor_1, predecessor_2, predecessor_3,
                  antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 "#,
             )
             .bind(entity.id)
@@ -57,6 +58,9 @@ impl PortfolioRepositoryImpl {
             .bind(entity.total_loan_outstanding_grantor)
             .bind(entity.risk_score)
             .bind(entity.compliance_status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
@@ -67,9 +71,10 @@ impl PortfolioRepositoryImpl {
                 r#"
                 INSERT INTO portfolio
                 (id, person_id, total_accounts, total_balance, total_loan_outstanding_main, 
-                 total_loan_outstanding_grantor, risk_score, compliance_status, 
+                 total_loan_outstanding_grantor, risk_score, compliance_status,
+                 predecessor_1, predecessor_2, predecessor_3,
                  antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 "#,
             )
             .bind(entity.id)
@@ -80,6 +85,9 @@ impl PortfolioRepositoryImpl {
             .bind(entity.total_loan_outstanding_grantor)
             .bind(entity.risk_score)
             .bind(entity.compliance_status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)

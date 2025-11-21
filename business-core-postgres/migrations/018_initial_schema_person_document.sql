@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS person_document (
     document_type VARCHAR(50) NOT NULL,
     document_path VARCHAR(500),
     status document_status NOT NULL,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -28,6 +31,9 @@ CREATE TABLE IF NOT EXISTS person_document_audit (
     document_type VARCHAR(50) NOT NULL,
     document_path VARCHAR(500),
     status document_status NOT NULL,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,

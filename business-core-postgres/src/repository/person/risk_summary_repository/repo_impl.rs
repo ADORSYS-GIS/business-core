@@ -49,7 +49,6 @@ impl TryFromRow<PgRow> for RiskSummaryModel {
     fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
         Ok(RiskSummaryModel {
             id: row.get("id"),
-            person_id: row.get("person_id"),
             current_rating: row.get("current_rating"),
             last_assessment_date: row.get("last_assessment_date"),
             flags_01: get_heapless_string(row, "flags_01")?,
@@ -65,7 +64,6 @@ impl TryFromRow<PgRow> for RiskSummaryIdxModel {
     fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
         Ok(RiskSummaryIdxModel {
             id: row.get("id"),
-            person_id: row.get("person_id"),
         })
     }
 }

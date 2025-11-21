@@ -54,8 +54,8 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person_audit
-                    (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                    (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, last_activity_log, last_compliance_status, last_document, last_portfolio, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
                     "#,
                 )
                 .bind(item.id)
@@ -76,6 +76,10 @@ impl PersonRepositoryImpl {
                 .bind(item.department.as_deref())
                 .bind(item.location_id)
                 .bind(item.duplicate_of_person_id)
+                .bind(item.last_activity_log)
+                .bind(item.last_compliance_status)
+                .bind(item.last_document)
+                .bind(item.last_portfolio)
                 .bind(item.antecedent_hash)
                 .bind(item.antecedent_audit_log_id)
                 .bind(item.hash)
@@ -93,9 +97,11 @@ impl PersonRepositoryImpl {
                     messaging_info1 = $11, messaging_info2 = $12, messaging_info3 = $13,
                     messaging_info4 = $14, messaging_info5 = $15, department = $16,
                     location_id = $17, duplicate_of_person_id = $18,
-                    antecedent_hash = $19, antecedent_audit_log_id = $20,
-                    hash = $21, audit_log_id = $22
-                    WHERE id = $1 AND hash = $23 AND audit_log_id = $24
+                    last_activity_log = $19, last_compliance_status = $20,
+                    last_document = $21, last_portfolio = $22,
+                    antecedent_hash = $23, antecedent_audit_log_id = $24,
+                    hash = $25, audit_log_id = $26
+                    WHERE id = $1 AND hash = $27 AND audit_log_id = $28
                     "#,
                 )
                 .bind(item.id)
@@ -116,6 +122,10 @@ impl PersonRepositoryImpl {
                 .bind(item.department.as_deref())
                 .bind(item.location_id)
                 .bind(item.duplicate_of_person_id)
+                .bind(item.last_activity_log)
+                .bind(item.last_compliance_status)
+                .bind(item.last_document)
+                .bind(item.last_portfolio)
                 .bind(item.antecedent_hash)
                 .bind(item.antecedent_audit_log_id)
                 .bind(item.hash)

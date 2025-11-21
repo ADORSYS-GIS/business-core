@@ -40,8 +40,8 @@ impl PersonRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO person_audit
-                    (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                    (id, person_type, risk_rating, status, display_name, external_identifier, id_type, id_number, entity_reference_count, organization_person_id, messaging_info1, messaging_info2, messaging_info3, messaging_info4, messaging_info5, department, location_id, duplicate_of_person_id, last_activity_log, last_compliance_status, last_document, last_portfolio, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
                     "#,
                 )
                 .bind(final_audit_entity.id)
@@ -62,6 +62,10 @@ impl PersonRepositoryImpl {
                 .bind(final_audit_entity.department.as_deref())
                 .bind(final_audit_entity.location_id)
                 .bind(final_audit_entity.duplicate_of_person_id)
+                .bind(final_audit_entity.last_activity_log)
+                .bind(final_audit_entity.last_compliance_status)
+                .bind(final_audit_entity.last_document)
+                .bind(final_audit_entity.last_portfolio)
                 .bind(final_audit_entity.antecedent_hash)
                 .bind(final_audit_entity.antecedent_audit_log_id)
                 .bind(final_audit_entity.hash)

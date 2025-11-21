@@ -57,8 +57,8 @@ impl ComplianceStatusRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_compliance_status_audit
-                (id, person_id, kyc_status, sanctions_checked, last_screening_date, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, kyc_status, sanctions_checked, last_screening_date, predecessor_1, predecessor_2, predecessor_3, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(entity.id)
@@ -66,6 +66,9 @@ impl ComplianceStatusRepositoryImpl {
             .bind(entity.kyc_status)
             .bind(entity.sanctions_checked)
             .bind(entity.last_screening_date)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.hash)
             .bind(entity.audit_log_id)
             .bind(entity.antecedent_hash)
@@ -79,13 +82,16 @@ impl ComplianceStatusRepositoryImpl {
                     kyc_status = $3,
                     sanctions_checked = $4,
                     last_screening_date = $5,
-                    hash = $6,
-                    audit_log_id = $7,
-                    antecedent_hash = $8,
-                    antecedent_audit_log_id = $9
+                    predecessor_1 = $6,
+                    predecessor_2 = $7,
+                    predecessor_3 = $8,
+                    hash = $9,
+                    audit_log_id = $10,
+                    antecedent_hash = $11,
+                    antecedent_audit_log_id = $12
                 WHERE id = $1
-                  AND hash = $8
-                  AND audit_log_id = $9
+                  AND hash = $11
+                  AND audit_log_id = $12
                 "#,
             )
             .bind(entity.id)
@@ -93,6 +99,9 @@ impl ComplianceStatusRepositoryImpl {
             .bind(entity.kyc_status)
             .bind(entity.sanctions_checked)
             .bind(entity.last_screening_date)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.hash)
             .bind(entity.audit_log_id)
             .bind(entity.antecedent_hash)

@@ -50,8 +50,8 @@ impl ComplianceStatusRepositoryImpl {
             let audit_insert_query = sqlx::query(
                 r#"
                 INSERT INTO person_compliance_status_audit
-                (id, person_id, kyc_status, sanctions_checked, last_screening_date, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                (id, person_id, kyc_status, sanctions_checked, last_screening_date, predecessor_1, predecessor_2, predecessor_3, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 "#,
             )
             .bind(final_audit_entity.id)
@@ -59,6 +59,9 @@ impl ComplianceStatusRepositoryImpl {
             .bind(final_audit_entity.kyc_status)
             .bind(final_audit_entity.sanctions_checked)
             .bind(final_audit_entity.last_screening_date)
+            .bind(final_audit_entity.predecessor_1)
+            .bind(final_audit_entity.predecessor_2)
+            .bind(final_audit_entity.predecessor_3)
             .bind(final_audit_entity.hash)
             .bind(final_audit_entity.audit_log_id)
             .bind(final_audit_entity.antecedent_hash)

@@ -29,12 +29,11 @@ impl RiskSummaryRepositoryImpl {
             sqlx::query(
                 r#"
                 UPDATE risk_summary
-                SET person_id = $2, current_rating = $3, last_assessment_date = $4, flags_01 = $5, flags_02 = $6, flags_03 = $7, flags_04 = $8, flags_05 = $9
+                SET current_rating = $2, last_assessment_date = $3, flags_01 = $4, flags_02 = $5, flags_03 = $6, flags_04 = $7, flags_05 = $8
                 WHERE id = $1
                 "#,
             )
             .bind(item.id)
-            .bind(item.person_id)
             .bind(item.current_rating)
             .bind(item.last_assessment_date)
             .bind(item.flags_01.as_str())
@@ -45,19 +44,8 @@ impl RiskSummaryRepositoryImpl {
             .execute(&mut **transaction)
             .await?;
 
-            // Update index table
+            // Update index table - no fields to update for index
             let idx = item.to_index();
-            sqlx::query(
-                r#"
-                UPDATE risk_summary_idx
-                SET person_id = $2
-                WHERE id = $1
-                "#,
-            )
-            .bind(idx.id)
-            .bind(idx.person_id)
-            .execute(&mut **transaction)
-            .await?;
 
             indices.push((item.id, idx));
             updated_items.push(item);
@@ -115,7 +103,7 @@ mod tests {
         person_repo.create_batch(vec![person.clone()], Some(audit_log.id)).await?;
 
         // Create risk summary
-        let risk_summary = create_test_risk_summary(person.id);
+        let risk_summary = create_test_risk_summary();
         let saved = risk_summary_repo.create_batch(vec![risk_summary.clone()], Some(audit_log.id)).await?;
 
         // Update the risk summary

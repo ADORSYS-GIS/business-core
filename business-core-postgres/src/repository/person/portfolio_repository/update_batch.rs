@@ -58,9 +58,10 @@ impl PortfolioRepositoryImpl {
                 r#"
                 INSERT INTO portfolio_audit
                 (id, person_id, total_accounts, total_balance, total_loan_outstanding_main, 
-                 total_loan_outstanding_grantor, risk_score, compliance_status, 
+                 total_loan_outstanding_grantor, risk_score, compliance_status,
+                 predecessor_1, predecessor_2, predecessor_3,
                  antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 "#,
             )
             .bind(entity.id)
@@ -71,6 +72,9 @@ impl PortfolioRepositoryImpl {
             .bind(entity.total_loan_outstanding_grantor)
             .bind(entity.risk_score)
             .bind(entity.compliance_status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)
@@ -87,13 +91,16 @@ impl PortfolioRepositoryImpl {
                     total_loan_outstanding_grantor = $6,
                     risk_score = $7,
                     compliance_status = $8,
-                    antecedent_hash = $9,
-                    antecedent_audit_log_id = $10,
-                    hash = $11,
-                    audit_log_id = $12
+                    predecessor_1 = $9,
+                    predecessor_2 = $10,
+                    predecessor_3 = $11,
+                    antecedent_hash = $12,
+                    antecedent_audit_log_id = $13,
+                    hash = $14,
+                    audit_log_id = $15
                 WHERE id = $1
-                  AND hash = $13
-                  AND audit_log_id = $14
+                  AND hash = $16
+                  AND audit_log_id = $17
                 "#,
             )
             .bind(entity.id)
@@ -104,6 +111,9 @@ impl PortfolioRepositoryImpl {
             .bind(entity.total_loan_outstanding_grantor)
             .bind(entity.risk_score)
             .bind(entity.compliance_status)
+            .bind(entity.predecessor_1)
+            .bind(entity.predecessor_2)
+            .bind(entity.predecessor_3)
             .bind(entity.antecedent_hash)
             .bind(entity.antecedent_audit_log_id)
             .bind(entity.hash)

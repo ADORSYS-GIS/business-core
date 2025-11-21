@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS person_compliance_status (
     kyc_status kyc_status NOT NULL,
     sanctions_checked BOOLEAN NOT NULL DEFAULT false,
     last_screening_date TIMESTAMPTZ,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -41,6 +44,9 @@ CREATE TABLE IF NOT EXISTS person_compliance_status_audit (
     kyc_status kyc_status NOT NULL,
     sanctions_checked BOOLEAN NOT NULL,
     last_screening_date TIMESTAMPTZ,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,

@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS portfolio (
     total_loan_outstanding_grantor DECIMAL(19, 4),
     risk_score DECIMAL(5, 2),
     compliance_status UUID NOT NULL,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
@@ -31,6 +34,9 @@ CREATE TABLE IF NOT EXISTS portfolio_audit (
     total_loan_outstanding_grantor DECIMAL(19, 4),
     risk_score DECIMAL(5, 2),
     compliance_status UUID NOT NULL,
+    predecessor_1 UUID,
+    predecessor_2 UUID,
+    predecessor_3 UUID,
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,

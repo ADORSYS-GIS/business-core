@@ -23,7 +23,7 @@ use crate::models::index::Index;
 /// }
 /// ```
 #[async_trait]
-pub trait FindIndexById<DB: Database, T: Index>: Send + Sync {
+pub trait FindById<DB: Database, T: Index>: Send + Sync {
     /// Find an index entity by its unique identifier
     /// 
     /// # Arguments
@@ -33,5 +33,5 @@ pub trait FindIndexById<DB: Database, T: Index>: Send + Sync {
     /// * `Ok(Some(T))` - The found index entity
     /// * `Ok(None)` - If the entity does not exist
     /// * `Err` - An error if the query could not be executed
-    async fn find_index_by_id(&self, id: Uuid) -> Result<Option<T>, Box<dyn std::error::Error + Send + Sync>>;
+    async fn find_by_id(&self, id: Uuid) -> Result<Option<T>, Box<dyn std::error::Error + Send + Sync>>;
 }
