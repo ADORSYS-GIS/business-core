@@ -12,6 +12,7 @@ pub enum EntityType {
     Portfolio,
     ComplianceStatus,
     Document,
+    Named,
 }
 
 impl From<EntityType> for &str {
@@ -25,6 +26,7 @@ impl From<EntityType> for &str {
             EntityType::Portfolio => "PORTFOLIO",
             EntityType::ComplianceStatus => "COMPLIANCE_STATUS",
             EntityType::Document => "DOCUMENT",
+            EntityType::Named => "NAMED",
         }
     }
 }

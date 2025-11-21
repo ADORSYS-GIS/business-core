@@ -73,6 +73,7 @@ where
         EntityType::Portfolio => "Portfolio",
         EntityType::ComplianceStatus => "ComplianceStatus",
         EntityType::Document => "Document",
+        EntityType::Named => "Named",
     })
 }
 
@@ -90,6 +91,7 @@ where
         "Portfolio" => Ok(EntityType::Portfolio),
         "ComplianceStatus" => Ok(EntityType::ComplianceStatus),
         "Document" => Ok(EntityType::Document),
+        "Named" => Ok(EntityType::Named),
         _ => Err(serde::de::Error::custom(format!("Unknown entity type: {s}"))),
     }
 }
