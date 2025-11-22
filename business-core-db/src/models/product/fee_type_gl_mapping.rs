@@ -1,8 +1,11 @@
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
+use crate::{HasPrimaryKey, IdxModelCache, Indexable};
+use crate::models::{Index, IndexAware};
 use serde::{Deserialize, Serialize};
-use sqlx::prelude::FromRow;
+use sqlx::FromRow;
 use uuid::Uuid;
+use std::collections::HashMap;
 
 pub fn deserialize_gl_code<'de, D>(deserializer: D) -> Result<heapless::String<50>, D::Error>
 where
@@ -54,16 +57,6 @@ impl Auditable for FeeTypeGlMappingModel {
     }
 }
 
-impl FeeTypeGlMappingModel {
-    pub fn to_index(&self) -> FeeTypeGlMappingIdxModel {
-        FeeTypeGlMappingIdxModel {
-            id: self.id,
-            fee_type: self.fee_type.clone(),
-            gl_code: self.gl_code.clone(),
-        }
-    }
-}
-
 /// As the FeeTypeGlMappingModel is tiny, we can keep main model
 /// info here and use the model to perform work.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -77,6 +70,44 @@ pub struct FeeTypeGlMappingIdxModel {
     #[serde(deserialize_with = "deserialize_gl_code")]
     pub gl_code: heapless::String<50>,
 }
+
+impl HasPrimaryKey for FeeTypeGlMappingIdxModel {
+    fn primary_key(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl IndexAware for FeeTypeGlMappingModel {
+    type IndexType = FeeTypeGlMappingIdxModel;
+    
+    fn to_index(&self) -> Self::IndexType {
+        FeeTypeGlMappingIdxModel {
+            id: self.id,
+            fee_type: self.fee_type.clone(),
+            gl_code: self.gl_code.clone(),
+        }
+    }
+}
+
+impl Identifiable for FeeTypeGlMappingIdxModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Index for FeeTypeGlMappingIdxModel {}
+
+impl Indexable for FeeTypeGlMappingIdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        HashMap::new()
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        HashMap::new()
+    }
+}
+
+pub type FeeTypeGlMappingIdxModelCache = IdxModelCache<FeeTypeGlMappingIdxModel>;
 
 /// Comprehensive fee types for banking products
 /// Supports both conventional and Islamic (Shariah-compliant) banking
