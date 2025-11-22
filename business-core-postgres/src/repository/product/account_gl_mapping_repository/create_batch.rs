@@ -152,4 +152,178 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_account_gl_mapping_insert_triggers_index_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use crate::test_helper::setup_test_context_and_listen;
+        use business_core_db::models::index_aware::IndexAware;
+        use tokio::time::{sleep, Duration};
+        
+        // Setup test context with the notification listener
+        let ctx = setup_test_context_and_listen().await?;
+        let pool = ctx.pool();
+
+        // Create a test entity
+        let test_item = create_test_account_gl_mapping("12345");
+        let item_idx = test_item.to_index();
+
+        // Give listener time to start
+        sleep(Duration::from_millis(2000)).await;
+
+        // First insert the main record
+        sqlx::query(
+            r#"
+            INSERT INTO account_gl_mapping (id, customer_account_code, overdraft_code, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind(test_item.id)
+        .bind(&test_item.customer_account_code)
+        .bind(&test_item.overdraft_code)
+        .bind(test_item.hash)
+        .bind(test_item.audit_log_id)
+        .bind(test_item.antecedent_hash)
+        .bind(test_item.antecedent_audit_log_id)
+        .execute(&**pool)
+        .await
+        .expect("Failed to insert account_gl_mapping");
+
+        // Then insert the index directly into the database using raw SQL
+        sqlx::query("INSERT INTO account_gl_mapping_idx (id) VALUES ($1)")
+            .bind(item_idx.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert account_gl_mapping index");
+
+        // Give time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        let account_gl_mapping_repo = &ctx.product_repos().account_gl_mapping_repository;
+
+        // Verify the index cache was updated via the trigger
+        let cache = account_gl_mapping_repo.account_gl_mapping_idx_cache.read().await;
+        assert!(
+            cache.contains_primary(&item_idx.id),
+            "AccountGlMapping index should be in cache after insert"
+        );
+
+        let cached_idx = cache.get_by_primary(&item_idx.id);
+        assert!(cached_idx.is_some(), "AccountGlMapping index should be retrievable from cache");
+        
+        // Verify the cached data matches
+        let cached_idx = cached_idx.unwrap();
+        assert_eq!(cached_idx.id, item_idx.id);
+        
+        // Drop the read lock before proceeding
+        drop(cache);
+
+        // Delete the record from the database
+        sqlx::query("DELETE FROM account_gl_mapping WHERE id = $1")
+            .bind(item_idx.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to delete account_gl_mapping");
+
+        // Give time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        // Verify the cache entry was removed
+        let cache = account_gl_mapping_repo.account_gl_mapping_idx_cache.read().await;
+        assert!(
+            !cache.contains_primary(&item_idx.id),
+            "AccountGlMapping index should be removed from cache after delete"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_account_gl_mapping_insert_triggers_main_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        use crate::test_helper::setup_test_context_and_listen;
+        use business_core_db::models::index_aware::IndexAware;
+        use tokio::time::{sleep, Duration};
+        
+        // Setup test context with the notification listener
+        let ctx = setup_test_context_and_listen().await?;
+        let pool = ctx.pool();
+
+        // Create a test entity
+        let test_item = create_test_account_gl_mapping("12345");
+        let item_idx = test_item.to_index();
+
+        // Give listener time to start
+        sleep(Duration::from_millis(2000)).await;
+
+        // Insert the entity record directly into database (triggers main cache notification)
+        sqlx::query(
+            r#"
+            INSERT INTO account_gl_mapping (id, customer_account_code, overdraft_code, hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind(test_item.id)
+        .bind(&test_item.customer_account_code)
+        .bind(&test_item.overdraft_code)
+        .bind(test_item.hash)
+        .bind(test_item.audit_log_id)
+        .bind(test_item.antecedent_hash)
+        .bind(test_item.antecedent_audit_log_id)
+        .execute(&**pool)
+        .await
+        .expect("Failed to insert account_gl_mapping");
+
+        // Insert the index record directly into database (triggers index cache notification)
+        sqlx::query("INSERT INTO account_gl_mapping_idx (id) VALUES ($1)")
+            .bind(item_idx.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to insert account_gl_mapping index");
+
+        // Give time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        let account_gl_mapping_repo = &ctx.product_repos().account_gl_mapping_repository;
+
+        // Verify the INDEX cache was updated
+        let idx_cache = account_gl_mapping_repo.account_gl_mapping_idx_cache.read().await;
+        assert!(
+            idx_cache.contains_primary(&item_idx.id),
+            "AccountGlMapping should be in index cache after insert"
+        );
+        drop(idx_cache);
+
+        // Verify the MAIN cache was updated
+        let main_cache = account_gl_mapping_repo.account_gl_mapping_cache.read().await;
+        assert!(
+            main_cache.contains(&test_item.id),
+            "AccountGlMapping should be in main cache after insert"
+        );
+        drop(main_cache);
+
+        // Delete the record from database (triggers both cache notifications)
+        sqlx::query("DELETE FROM account_gl_mapping WHERE id = $1")
+            .bind(test_item.id)
+            .execute(&**pool)
+            .await
+            .expect("Failed to delete account_gl_mapping");
+
+        // Give time for notification to be processed
+        sleep(Duration::from_millis(500)).await;
+
+        // Verify removed from both caches
+        let idx_cache = account_gl_mapping_repo.account_gl_mapping_idx_cache.read().await;
+        assert!(
+            !idx_cache.contains_primary(&item_idx.id),
+            "AccountGlMapping should be removed from index cache after delete"
+        );
+        drop(idx_cache);
+
+        let main_cache = account_gl_mapping_repo.account_gl_mapping_cache.read().await;
+        assert!(
+            !main_cache.contains(&test_item.id),
+            "AccountGlMapping should be removed from main cache after delete"
+        );
+
+        Ok(())
+    }
 }
