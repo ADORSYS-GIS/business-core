@@ -5,7 +5,6 @@ pub mod load_audits;
 pub mod update_batch;
 pub mod delete_batch;
 pub mod exist_by_ids;
-pub mod find_by_customer_account_code_hash;
 
 #[cfg(test)]
 pub mod test_utils;

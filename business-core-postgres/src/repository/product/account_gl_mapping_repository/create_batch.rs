@@ -79,12 +79,11 @@ pub(super) async fn create_batch_impl(
         let idx = item.to_index();
         sqlx::query(
             r#"
-            INSERT INTO account_gl_mapping_idx (account_gl_mapping_id, customer_account_code_hash)
-            VALUES ($1, $2)
+            INSERT INTO account_gl_mapping_idx (id)
+            VALUES ($1)
             "#,
         )
         .bind(idx.id)
-        .bind(idx.customer_account_code_hash)
         .execute(&mut **transaction)
         .await?;
         

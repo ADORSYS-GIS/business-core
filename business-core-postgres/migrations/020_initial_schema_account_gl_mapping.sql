@@ -14,8 +14,7 @@ CREATE TABLE IF NOT EXISTS account_gl_mapping (
 
 -- AccountGlMapping Index Table
 CREATE TABLE IF NOT EXISTS account_gl_mapping_idx (
-    account_gl_mapping_id UUID PRIMARY KEY REFERENCES account_gl_mapping(id) ON DELETE CASCADE,
-    customer_account_code_hash BIGINT NOT NULL
+    id UUID PRIMARY KEY REFERENCES account_gl_mapping(id) ON DELETE CASCADE
 );
 
 -- Create trigger for account_gl_mapping_idx table to notify index cache changes

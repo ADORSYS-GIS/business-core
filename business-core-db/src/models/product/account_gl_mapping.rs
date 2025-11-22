@@ -44,19 +44,14 @@ impl HasPrimaryKeyCache for AccountGlMappingModel {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct AccountGlMappingIdxModel {
     pub id: Uuid,
-    pub customer_account_code_hash: i64,
 }
 
 impl IndexAware for AccountGlMappingModel {
     type IndexType = AccountGlMappingIdxModel;
 
     fn to_index(&self) -> Self::IndexType {
-        let customer_account_code_hash =
-            crate::utils::hash_as_i64(&self.customer_account_code.as_str()).unwrap_or(0);
-
         AccountGlMappingIdxModel {
             id: self.id,
-            customer_account_code_hash,
         }
     }
 }
@@ -71,12 +66,7 @@ impl Index for AccountGlMappingIdxModel {}
 
 impl Indexable for AccountGlMappingIdxModel {
     fn i64_keys(&self) -> HashMap<String, Option<i64>> {
-        let mut keys = HashMap::new();
-        keys.insert(
-            "customer_account_code_hash".to_string(),
-            Some(self.customer_account_code_hash),
-        );
-        keys
+        HashMap::new()
     }
 
     fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {

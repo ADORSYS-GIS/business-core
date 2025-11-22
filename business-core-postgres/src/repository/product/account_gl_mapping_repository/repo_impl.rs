@@ -67,8 +67,7 @@ impl TryFromRow<PgRow> for AccountGlMappingModel {
 impl TryFromRow<PgRow> for AccountGlMappingIdxModel {
     fn try_from_row(row: &PgRow) -> Result<Self, Box<dyn Error + Send + Sync>> {
         Ok(AccountGlMappingIdxModel {
-            id: row.get("account_gl_mapping_id"),
-            customer_account_code_hash: row.get("customer_account_code_hash"),
+            id: row.get("id"),
         })
     }
 }
@@ -144,9 +143,8 @@ mod tests {
             .expect("Failed to insert account_gl_mapping");
 
         // Insert the index record directly into database
-        sqlx::query("INSERT INTO account_gl_mapping_idx (account_gl_mapping_id, customer_account_code_hash) VALUES ($1, $2)")
+        sqlx::query("INSERT INTO account_gl_mapping_idx (id) VALUES ($1)")
             .bind(entity_idx.id)
-            .bind(entity_idx.customer_account_code_hash)
             .execute(&**pool)
             .await
             .expect("Failed to insert account_gl_mapping index");
