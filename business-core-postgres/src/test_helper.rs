@@ -11,7 +11,7 @@ use postgres_index_cache::CacheNotificationListener;
 use postgres_unit_of_work::{PostgresUnitOfWork, UnitOfWork};
 use tokio::sync::OnceCell;
 
-use crate::repository::{audit::AuditRepositories, person::PersonRepositories, reason_and_purpose::ReasonAndPurposeRepositories, calendar::CalendarRepositories, description::DescriptionRepositories};
+use crate::repository::{audit::AuditRepositories, person::PersonRepositories, reason_and_purpose::ReasonAndPurposeRepositories, calendar::CalendarRepositories, description::DescriptionRepositories, product::ProductRepositories};
 
 // Flag to track if DB initialization has been done
 static DB_INITIALIZED: OnceCell<()> = OnceCell::const_new();
@@ -83,6 +83,7 @@ pub struct TestContext {
     pub reason_and_purpose_repos: ReasonAndPurposeRepositories,
     pub calendar_repos: CalendarRepositories,
     pub description_repos: DescriptionRepositories,
+    pub product_repos: ProductRepositories,
     pub pool: Arc<PgPool>,
     listener_handle: Option<tokio::task::JoinHandle<()>>,
 }
@@ -111,6 +112,11 @@ impl TestContext {
     /// Get the description repositories from the context
     pub fn description_repos(&self) -> &DescriptionRepositories {
         &self.description_repos
+    }
+
+    /// Get the product repositories from the context
+    pub fn product_repos(&self) -> &ProductRepositories {
+        &self.product_repos
     }
 
     /// Get the pool from the context
@@ -160,6 +166,7 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(None);
     let calendar_factory = crate::repository::calendar::CalendarRepoFactory::new(None);
     let description_factory = crate::repository::description::DescriptionRepoFactory::new(None);
+    let product_factory = crate::repository::product::ProductRepoFactory::new(None);
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
@@ -167,6 +174,7 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
     let reason_and_purpose_repos = reason_and_purpose_factory.build_all_repos(&session);
     let calendar_repos = calendar_factory.build_all_repos(&session);
     let description_repos = description_factory.build_all_repos(&session);
+    let product_repos = product_factory.build_all_repos(&session);
 
     Ok(TestContext {
         audit_repos,
@@ -174,6 +182,7 @@ pub async fn setup_test_context() -> Result<TestContext, Box<dyn std::error::Err
         reason_and_purpose_repos,
         calendar_repos,
         description_repos,
+        product_repos,
         pool,
         listener_handle: None,
     })
@@ -203,6 +212,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     let reason_and_purpose_factory = crate::repository::reason_and_purpose::ReasonAndPurposeRepoFactory::new(Some(&mut listener));
     let calendar_factory = crate::repository::calendar::CalendarRepoFactory::new(Some(&mut listener));
     let description_factory = crate::repository::description::DescriptionRepoFactory::new(Some(&mut listener));
+    let product_factory = crate::repository::product::ProductRepoFactory::new(Some(&mut listener));
     
     // Build repositories using the session executor
     let audit_repos = audit_factory.build_all_repos(&session);
@@ -210,6 +220,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
     let reason_and_purpose_repos = reason_and_purpose_factory.build_all_repos(&session);
     let calendar_repos = calendar_factory.build_all_repos(&session);
     let description_repos = description_factory.build_all_repos(&session);
+    let product_repos = product_factory.build_all_repos(&session);
     
     // Start listening to notifications in background
     let pool_clone = pool.clone();
@@ -224,6 +235,7 @@ pub async fn setup_test_context_and_listen() -> Result<TestContext, Box<dyn std:
         reason_and_purpose_repos,
         calendar_repos,
         description_repos,
+        product_repos,
         pool,
         listener_handle: Some(listen_handle),
     })

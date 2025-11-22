@@ -1,9 +1,12 @@
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
+use crate::{HasPrimaryKey, IdxModelCache, Indexable};
+use crate::models::{Index, IndexAware};
 use heapless::String as HeaplessString;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use std::collections::HashMap;
 
 pub fn deserialize_customer_account_code<'de, D>(
     deserializer: D,
@@ -70,16 +73,6 @@ impl Auditable for AccountGlMappingModel {
     }
 }
 
-impl AccountGlMappingModel {
-    pub fn to_index(&self) -> AccountGlMappingIdxModel {
-        AccountGlMappingIdxModel {
-            id: self.id,
-            customer_account_code: self.customer_account_code.clone(),
-            overdraft_code: self.overdraft_code.clone(),
-        }
-    }
-}
-
 /// As the AccountGlMappingModel is tiny, we can keep main model
 /// info here and use the model to perform work.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -92,3 +85,41 @@ pub struct AccountGlMappingIdxModel {
     // - Not a secondary Index. Do not provide any finder!
     pub overdraft_code: Option<HeaplessString<50>>,
 }
+
+impl HasPrimaryKey for AccountGlMappingIdxModel {
+    fn primary_key(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl IndexAware for AccountGlMappingModel {
+    type IndexType = AccountGlMappingIdxModel;
+    
+    fn to_index(&self) -> Self::IndexType {
+        AccountGlMappingIdxModel {
+            id: self.id,
+            customer_account_code: self.customer_account_code.clone(),
+            overdraft_code: self.overdraft_code.clone(),
+        }
+    }
+}
+
+impl Identifiable for AccountGlMappingIdxModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Index for AccountGlMappingIdxModel {}
+
+impl Indexable for AccountGlMappingIdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        HashMap::new()
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        HashMap::new()
+    }
+}
+
+pub type AccountGlMappingIdxModelCache = IdxModelCache<AccountGlMappingIdxModel>;
