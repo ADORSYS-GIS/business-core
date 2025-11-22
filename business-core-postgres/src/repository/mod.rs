@@ -4,3 +4,4 @@ pub mod person;
 pub mod reason_and_purpose;
 pub mod calendar;
 pub mod description;
+pub mod product;

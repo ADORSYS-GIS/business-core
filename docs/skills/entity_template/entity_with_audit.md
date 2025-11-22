@@ -358,8 +358,8 @@ async fn update_batch_impl(
                 antecedent_hash = $N+2,
                 antecedent_audit_log_id = $N+3
             WHERE id = $1
-              AND hash = $N+2
-              AND audit_log_id = $N+3
+              AND hash = $N+4
+              AND audit_log_id = $N+5
             "#,
         )
         .bind(entity.id)
@@ -368,7 +368,9 @@ async fn update_batch_impl(
         .bind(entity.hash)
         .bind(entity.audit_log_id)
         .bind(entity.antecedent_hash)
-        .bind(entity.antecedent_audit_log_id);
+        .bind(entity.antecedent_audit_log_id)
+        .bind(previous_hash)
+        .bind(previous_audit_log_id);
         
         // 7. Create audit link
         let audit_link = AuditLinkModel {
