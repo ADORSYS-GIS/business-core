@@ -11,6 +11,4 @@ DROP TABLE IF EXISTS calendar_business_day CASCADE;
 
 -- Drop enum types (only if not used by other tables)
 -- Note: These types might be shared with other calendar tables, so be cautious
-DROP TYPE IF EXISTS holiday_type CASCADE;
--- DROP TYPE IF EXISTS day_scope CASCADE;
--- DROP TYPE IF EXISTS weekday CASCADE;
+DROP TYPE IF EXISTS day_scope CASCADE;
