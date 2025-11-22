@@ -100,13 +100,13 @@ mod tests {
         let mut saved = entity_reference_repo.create_batch(vec![entity_reference.clone()], Some(audit_log.id)).await?;
 
         // Update the entity multiple times to create audit history
-        for i in 1..=3 {
+        for _ in 1..=3 {
             let audit_log = create_test_audit_log();
             audit_log_repo.create(&audit_log).await?;
             
             let mut updated = saved[0].clone();
-            // Modify a field to create a new version - change reference_details_l1
-            updated.reference_details_l1 = Some(heapless::String::try_from(format!("Detail {i}").as_str()).unwrap());
+            // Modify a field to create a new version - change reference_details
+            updated.reference_details = Some(uuid::Uuid::new_v4());
             saved = entity_reference_repo.update_batch(vec![updated], Some(audit_log.id)).await?;
         }
 

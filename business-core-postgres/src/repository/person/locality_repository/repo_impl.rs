@@ -1,5 +1,5 @@
 use business_core_db::models::person::locality::{LocalityIdxModel, LocalityModel};
-use crate::utils::{get_heapless_string, get_optional_heapless_string, TryFromRow};
+use crate::utils::{get_heapless_string, TryFromRow};
 use postgres_unit_of_work::{Executor, TransactionAware, TransactionResult};
 use postgres_index_cache::TransactionAwareIdxModelCache;
 use parking_lot::RwLock as ParkingRwLock;
@@ -65,9 +65,7 @@ impl TryFromRow<PgRow> for LocalityModel {
             id: row.get("id"),
             country_subdivision_id: row.get("country_subdivision_id"),
             code: get_heapless_string(row, "code")?,
-            name_l1: get_heapless_string(row, "name_l1")?,
-            name_l2: get_optional_heapless_string(row, "name_l2")?,
-            name_l3: get_optional_heapless_string(row, "name_l3")?,
+            name: row.get("name"),
         })
     }
 }

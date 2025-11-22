@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{audit_link::AuditLinkModel, entity_type::EntityType},
+    audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType},
 };
 use business_core_db::repository::delete_batch::DeleteBatch;
 use business_core_db::repository::load_batch::LoadBatch;
@@ -85,7 +85,7 @@ impl PortfolioRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::Portfolio,
+                entity_type: AuditEntityType::Portfolio,
             };
             let audit_link_query = sqlx::query(
                 r#"

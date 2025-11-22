@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{audit_link::AuditLinkModel, entity_type::EntityType},
+    audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType},
     person::compliance_status::ComplianceStatusModel,
 };
 use business_core_db::repository::update_batch::UpdateBatch;
@@ -111,7 +111,7 @@ impl ComplianceStatusRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::ComplianceStatus,
+                entity_type: AuditEntityType::ComplianceStatus,
             };
             let audit_link_query = sqlx::query(
                 r#"

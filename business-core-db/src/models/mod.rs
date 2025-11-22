@@ -7,6 +7,7 @@ pub mod calendar;
 pub mod person;
 pub mod reason_and_purpose;
 pub mod product;
+pub mod description;
 
 // Models modules will be added here as needed
 // For example:

@@ -12,9 +12,7 @@ CREATE TABLE IF NOT EXISTS entity_reference (
     person_id UUID NOT NULL,
     entity_role person_entity_type NOT NULL,
     reference_external_id VARCHAR(50) NOT NULL,
-    reference_details_l1 VARCHAR(50),
-    reference_details_l2 VARCHAR(50),
-    reference_details_l3 VARCHAR(50),
+    reference_details UUID,
     related_person_id UUID,
     start_date TIMESTAMPTZ,
     end_date TIMESTAMPTZ,
@@ -41,9 +39,7 @@ CREATE TABLE IF NOT EXISTS entity_reference_audit (
     person_id UUID NOT NULL,
     entity_role person_entity_type NOT NULL,
     reference_external_id VARCHAR(50) NOT NULL,
-    reference_details_l1 VARCHAR(50),
-    reference_details_l2 VARCHAR(50),
-    reference_details_l3 VARCHAR(50),
+    reference_details UUID,
     related_person_id UUID,
     start_date TIMESTAMPTZ,
     end_date TIMESTAMPTZ,
@@ -73,6 +69,6 @@ CREATE TRIGGER entity_reference_idx_notify
     FOR EACH ROW
     EXECUTE FUNCTION notify_cache_change();
 
--- Update entity_type enum to include ENTITY_REFERENCE
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'ENTITY_REFERENCE';
+-- Update audit_entity_type enum to include EntityReference
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'EntityReference';

@@ -5,9 +5,7 @@
 CREATE TABLE IF NOT EXISTS country (
     id UUID PRIMARY KEY,
     iso2 VARCHAR(2) NOT NULL,
-    name_l1 VARCHAR(100) NOT NULL,
-    name_l2 VARCHAR(100),
-    name_l3 VARCHAR(100)
+    name UUID NOT NULL
 );
 
 -- Country Index Table

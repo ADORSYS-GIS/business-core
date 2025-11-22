@@ -1,4 +1,4 @@
-use business_core_db::models::person::document::{DocumentModel, DocumentStatus};
+use business_core_db::models::person::document::{DocumentModel, DocumentStatus, DocumentType};
 use heapless::String as HeaplessString;
 use uuid::Uuid;
 
@@ -6,7 +6,7 @@ pub fn create_test_document(person_id: Uuid) -> DocumentModel {
     DocumentModel {
         id: Uuid::new_v4(),
         person_id,
-        document_type: HeaplessString::try_from("Passport").unwrap(),
+        document_type: DocumentType::Passport,
         document_path: Some(HeaplessString::try_from("/documents/passport.pdf").unwrap()),
         status: DocumentStatus::Uploaded,
         predecessor_1: None,
@@ -21,12 +21,12 @@ pub fn create_test_document(person_id: Uuid) -> DocumentModel {
 
 pub fn create_test_document_with_type(
     person_id: Uuid,
-    document_type: &str,
+    document_type: DocumentType,
 ) -> DocumentModel {
     DocumentModel {
         id: Uuid::new_v4(),
         person_id,
-        document_type: HeaplessString::try_from(document_type).unwrap(),
+        document_type,
         document_path: Some(HeaplessString::try_from("/documents/document.pdf").unwrap()),
         status: DocumentStatus::Uploaded,
         predecessor_1: None,
@@ -46,7 +46,7 @@ pub fn create_test_document_with_status(
     DocumentModel {
         id: Uuid::new_v4(),
         person_id,
-        document_type: HeaplessString::try_from("ID Card").unwrap(),
+        document_type: DocumentType::NationalIdCard,
         document_path: Some(HeaplessString::try_from("/documents/id.pdf").unwrap()),
         status,
         predecessor_1: None,

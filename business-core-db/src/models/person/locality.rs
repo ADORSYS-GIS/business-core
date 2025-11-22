@@ -17,9 +17,7 @@ pub struct LocalityModel {
     
     pub code: HeaplessString<50>,
 
-    pub name_l1: HeaplessString<50>,
-    pub name_l2: Option<HeaplessString<50>>,
-    pub name_l3: Option<HeaplessString<50>>,
+    pub name: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

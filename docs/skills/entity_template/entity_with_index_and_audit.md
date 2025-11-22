@@ -478,7 +478,7 @@ CREATE INDEX IF NOT EXISTS idx_{table_name}_audit_id
     CREATE TABLE IF NOT EXISTS audit_link (
         audit_log_id UUID NOT NULL REFERENCES audit_log(id),
         entity_id UUID NOT NULL,
-        entity_type entity_type NOT NULL,
+        entity_type audit_entity_type NOT NULL,
         PRIMARY KEY (audit_log_id, entity_id)
     );
     

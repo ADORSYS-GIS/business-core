@@ -6,9 +6,7 @@ CREATE TABLE IF NOT EXISTS country_subdivision (
     id UUID PRIMARY KEY,
     country_id UUID NOT NULL REFERENCES country(id) ON DELETE CASCADE,
     code VARCHAR(10) NOT NULL UNIQUE,
-    name_l1 VARCHAR(100) NOT NULL,
-    name_l2 VARCHAR(100),
-    name_l3 VARCHAR(100)
+    name UUID NOT NULL
 );
 
 -- CountrySubdivision Index Table

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS reason_reference (
     id UUID PRIMARY KEY,
     reason_id UUID NOT NULL,
     entity_id UUID NOT NULL,
-    entity_type entity_type NOT NULL,
+    entity_type audit_entity_type NOT NULL,
     additional_details TEXT,
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS reason_reference_audit (
     id UUID NOT NULL,
     reason_id UUID NOT NULL,
     entity_id UUID NOT NULL,
-    entity_type entity_type NOT NULL,
+    entity_type audit_entity_type NOT NULL,
     additional_details TEXT,
     
     -- Audit-specific fields
@@ -43,6 +43,6 @@ CREATE TABLE IF NOT EXISTS reason_reference_audit (
 CREATE INDEX IF NOT EXISTS idx_reason_reference_audit_id
     ON reason_reference_audit(id);
 
--- Update entity_type enum to include REASON_REFERENCE
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'REASON_REFERENCE';
+-- Update audit_entity_type enum to include ReasonReference
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'ReasonReference';

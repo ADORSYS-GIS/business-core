@@ -4,7 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
-use crate::models::audit::entity_type::EntityType;
+use crate::models::audit::audit_entity_type::{AuditEntityType, serialize_entity_type, deserialize_entity_type};
 
 /// # Documentation
 /// Reason Reference links a reason to an entity in the system.
@@ -27,7 +27,7 @@ pub struct ReasonReferenceModel {
 
     /// The type of entity being referenced
     #[serde(serialize_with = "serialize_entity_type", deserialize_with = "deserialize_entity_type")]
-    pub entity_type: EntityType,
+    pub entity_type: AuditEntityType,
 
     /// Hash from the previous audit record for chain verification (0 for initial create)
     pub antecedent_hash: i64,
@@ -57,39 +57,5 @@ impl Identifiable for ReasonReferenceModel {
 impl Auditable for ReasonReferenceModel {
     fn get_audit_log_id(&self) -> Option<Uuid> {
         self.audit_log_id
-    }
-}
-
-fn serialize_entity_type<S>(entity_type: &EntityType, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_str(match entity_type {
-        EntityType::Location => "Location",
-        EntityType::Person => "Person",
-        EntityType::EntityReference => "EntityReference",
-        EntityType::ReasonReference => "ReasonReference",
-        EntityType::ActivityLog => "ActivityLog",
-        EntityType::Portfolio => "Portfolio",
-        EntityType::ComplianceStatus => "ComplianceStatus",
-        EntityType::Document => "Document",
-    })
-}
-
-fn deserialize_entity_type<'de, D>(deserializer: D) -> Result<EntityType, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    match s.as_str() {
-        "Location" => Ok(EntityType::Location),
-        "Person" => Ok(EntityType::Person),
-        "EntityReference" => Ok(EntityType::EntityReference),
-        "ReasonReference" => Ok(EntityType::ReasonReference),
-        "ActivityLog" => Ok(EntityType::ActivityLog),
-        "Portfolio" => Ok(EntityType::Portfolio),
-        "ComplianceStatus" => Ok(EntityType::ComplianceStatus),
-        "Document" => Ok(EntityType::Document),
-        _ => Err(serde::de::Error::custom(format!("Unknown entity type: {s}"))),
     }
 }

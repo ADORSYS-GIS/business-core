@@ -1,18 +1,31 @@
--- Migration: Initial Portfolio Schema with Audit Support
--- Description: Creates portfolio-related tables with audit trail.
+-- Migration: Initial Person Compliance Status Schema with Audit Support
+-- Description: Creates person_compliance_status-related tables with audit trail.
 -- Note: This entity is NOT indexed (no idx table, no cache, no triggers).
 
--- Main Portfolio Table
--- Stores the current state of the portfolio.
-CREATE TABLE IF NOT EXISTS portfolio (
+-- Update audit_entity_type enum to include ComplianceStatus
+-- Note: This assumes the audit_entity_type enum exists from the audit schema migration
+ALTER TYPE audit_entity_type ADD VALUE IF NOT EXISTS 'ComplianceStatus';
+
+-- Create kyc_status ENUM type
+CREATE TYPE kyc_status AS ENUM (
+    'NotStarted',
+    'InProgress',
+    'Pending',
+    'Complete',
+    'Approved',
+    'Rejected',
+    'RequiresUpdate',
+    'Failed'
+);
+
+-- Main Person Compliance Status Table
+-- Stores the current state of the compliance status.
+CREATE TABLE IF NOT EXISTS person_compliance_status (
     id UUID PRIMARY KEY,
     person_id UUID NOT NULL,
-    total_accounts BIGINT NOT NULL DEFAULT 0,
-    total_balance DECIMAL(19, 4) NOT NULL DEFAULT 0,
-    total_loan_outstanding_main DECIMAL(19, 4),
-    total_loan_outstanding_grantor DECIMAL(19, 4),
-    risk_score DECIMAL(5, 2),
-    compliance_status UUID NOT NULL,
+    kyc_status kyc_status NOT NULL,
+    sanctions_checked BOOLEAN NOT NULL DEFAULT false,
+    last_screening_date TIMESTAMPTZ,
     predecessor_1 UUID,
     predecessor_2 UUID,
     predecessor_3 UUID,
@@ -22,18 +35,15 @@ CREATE TABLE IF NOT EXISTS portfolio (
     antecedent_audit_log_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
 );
 
--- Portfolio Audit Table
+-- Person Compliance Status Audit Table
 -- Stores a complete, immutable snapshot of the entity at each change.
-CREATE TABLE IF NOT EXISTS portfolio_audit (
+CREATE TABLE IF NOT EXISTS person_compliance_status_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
     person_id UUID NOT NULL,
-    total_accounts BIGINT NOT NULL,
-    total_balance DECIMAL(19, 4) NOT NULL,
-    total_loan_outstanding_main DECIMAL(19, 4),
-    total_loan_outstanding_grantor DECIMAL(19, 4),
-    risk_score DECIMAL(5, 2),
-    compliance_status UUID NOT NULL,
+    kyc_status kyc_status NOT NULL,
+    sanctions_checked BOOLEAN NOT NULL,
+    last_screening_date TIMESTAMPTZ,
     predecessor_1 UUID,
     predecessor_2 UUID,
     predecessor_3 UUID,
@@ -52,9 +62,5 @@ CREATE TABLE IF NOT EXISTS portfolio_audit (
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_portfolio_audit_id
-    ON portfolio_audit(id);
-
--- Update entity_type enum to include PORTFOLIO
--- Note: This assumes the entity_type enum exists from the audit schema migration
-ALTER TYPE entity_type ADD VALUE IF NOT EXISTS 'PORTFOLIO';
+CREATE INDEX IF NOT EXISTS idx_person_compliance_status_audit_id
+    ON person_compliance_status_audit(id);

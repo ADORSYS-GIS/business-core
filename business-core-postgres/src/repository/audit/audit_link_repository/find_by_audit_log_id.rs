@@ -53,11 +53,11 @@ impl AuditLinkRepositoryImpl {
 mod tests {
     use crate::test_helper::setup_test_context;
     use crate::repository::person::test_utils::create_test_audit_log;
-    use business_core_db::models::EntityType;
+    use business_core_db::models::AuditEntityType;
     use business_core_db::models::audit::AuditLinkModel;
     use business_core_db::repository::pagination::PageRequest;
 
-    fn create_test_audit_link(audit_log_id: uuid::Uuid, entity_id: uuid::Uuid, entity_type: EntityType) -> AuditLinkModel {
+    fn create_test_audit_link(audit_log_id: uuid::Uuid, entity_id: uuid::Uuid, entity_type: AuditEntityType) -> AuditLinkModel {
         AuditLinkModel {
             audit_log_id,
             entity_id,
@@ -78,7 +78,7 @@ mod tests {
         // Create multiple audit links for this audit log
         for _i in 0..5 {
             let entity_id = uuid::Uuid::new_v4();
-            let audit_link = create_test_audit_link(audit_log.id, entity_id, EntityType::Location);
+            let audit_link = create_test_audit_link(audit_log.id, entity_id, AuditEntityType::Location);
             audit_link_repo.create(&audit_link).await?;
         }
 
@@ -139,7 +139,7 @@ mod tests {
         // Create 3 audit links
         for _i in 0..3 {
             let entity_id = uuid::Uuid::new_v4();
-            let audit_link = create_test_audit_link(audit_log.id, entity_id, EntityType::ComplianceStatus);
+            let audit_link = create_test_audit_link(audit_log.id, entity_id, AuditEntityType::ComplianceStatus);
             audit_link_repo.create(&audit_link).await?;
         }
 
@@ -170,14 +170,14 @@ mod tests {
         // Create 3 audit links for first audit log
         for _i in 0..3 {
             let entity_id = uuid::Uuid::new_v4();
-            let audit_link = create_test_audit_link(audit_log1.id, entity_id, EntityType::Document);
+            let audit_link = create_test_audit_link(audit_log1.id, entity_id, AuditEntityType::Document);
             audit_link_repo.create(&audit_link).await?;
         }
 
         // Create 2 audit links for second audit log
         for _i in 0..2 {
             let entity_id = uuid::Uuid::new_v4();
-            let audit_link = create_test_audit_link(audit_log2.id, entity_id, EntityType::EntityReference);
+            let audit_link = create_test_audit_link(audit_log2.id, entity_id, AuditEntityType::EntityReference);
             audit_link_repo.create(&audit_link).await?;
         }
 

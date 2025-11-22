@@ -17,9 +17,7 @@ pub struct CountrySubdivisionModel {
     
     pub code: HeaplessString<10>,
 
-    pub name_l1: HeaplessString<100>,
-    pub name_l2: Option<HeaplessString<100>>,
-    pub name_l3: Option<HeaplessString<100>>,
+    pub name: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

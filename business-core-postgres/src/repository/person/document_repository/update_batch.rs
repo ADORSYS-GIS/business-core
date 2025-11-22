@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{audit_link::AuditLinkModel, entity_type::EntityType},
+    audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType},
     person::document::DocumentModel,
 };
 use business_core_db::repository::update_batch::UpdateBatch;
@@ -63,7 +63,7 @@ impl DocumentRepositoryImpl {
             )
             .bind(entity.id)
             .bind(entity.person_id)
-            .bind(entity.document_type.as_str())
+            .bind(entity.document_type)
             .bind(entity.document_path.as_deref())
             .bind(entity.status)
             .bind(entity.predecessor_1)
@@ -96,7 +96,7 @@ impl DocumentRepositoryImpl {
             )
             .bind(entity.id)
             .bind(entity.person_id)
-            .bind(entity.document_type.as_str())
+            .bind(entity.document_type)
             .bind(entity.document_path.as_deref())
             .bind(entity.status)
             .bind(entity.predecessor_1)
@@ -120,7 +120,7 @@ impl DocumentRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::Document,
+                entity_type: AuditEntityType::Document,
             };
             let audit_link_query = sqlx::query(
                 r#"
