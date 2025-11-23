@@ -574,6 +574,15 @@ async fn exist_by_ids_impl(
 
 A complete migration script for an auditable entity (without index) includes the main table and an audit table.
 
+**IMPORTANT**: Each new auditable entity must extend the `audit_entity_type` ENUM in the database.
+This is a manual step that must be included in the migration script.
+
+Example:
+```sql
+-- Add new entity type to audit_entity_type enum
+ALTER TYPE audit_entity_type ADD VALUE 'YourNewEntityType';
+```
+
 ```sql
 -- Migration: Initial {Entity} Schema with Audit Support (No Index)
 -- Description: Creates {entity}-related tables with audit trail.

@@ -55,3 +55,6 @@ CREATE TABLE IF NOT EXISTS interest_rate_tier_audit (
 -- Index on id for efficient audit queries by entity ID.
 CREATE INDEX IF NOT EXISTS idx_interest_rate_tier_audit_id
     ON interest_rate_tier_audit(id);
+
+-- Add new entity type to audit_entity_type enum
+ALTER TYPE audit_entity_type ADD VALUE 'InterestRateTier';

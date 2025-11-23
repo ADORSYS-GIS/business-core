@@ -1,8 +1,11 @@
 use crate::models::auditable::Auditable;
 use crate::models::identifiable::Identifiable;
+use crate::models::{Index, IndexAware};
+use crate::{HasPrimaryKey, IdxModelCache, Indexable};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Represents a tier for interest rate calculation based on balance.
@@ -45,8 +48,10 @@ impl Auditable for InterestRateTierModel {
     }
 }
 
-impl InterestRateTierModel {
-    pub fn to_index(&self) -> InterestRateTierIdxModel {
+impl IndexAware for InterestRateTierModel {
+    type IndexType = InterestRateTierIdxModel;
+
+    fn to_index(&self) -> Self::IndexType {
         InterestRateTierIdxModel {
             id: self.id,
             name: self.name,
@@ -60,8 +65,38 @@ impl InterestRateTierModel {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct InterestRateTierIdxModel {
     pub id: Uuid,
+    // - Not a secondary Index. Do not provide any finder!
     pub name: Uuid,
+    // - Not a secondary Index. Do not provide any finder!
     pub minimum_balance: Decimal,
+    // - Not a secondary Index. Do not provide any finder!
     pub maximum_balance: Option<Decimal>,
+    // - Not a secondary Index. Do not provide any finder!
     pub interest_rate: Decimal,
 }
+
+impl HasPrimaryKey for InterestRateTierIdxModel {
+    fn primary_key(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Identifiable for InterestRateTierIdxModel {
+    fn get_id(&self) -> Uuid {
+        self.id
+    }
+}
+
+impl Index for InterestRateTierIdxModel {}
+
+impl Indexable for InterestRateTierIdxModel {
+    fn i64_keys(&self) -> HashMap<String, Option<i64>> {
+        HashMap::new()
+    }
+
+    fn uuid_keys(&self) -> HashMap<String, Option<Uuid>> {
+        HashMap::new()
+    }
+}
+
+pub type InterestRateTierIdxModelCache = IdxModelCache<InterestRateTierIdxModel>;

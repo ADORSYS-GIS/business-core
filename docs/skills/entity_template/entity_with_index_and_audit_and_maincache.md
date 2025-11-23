@@ -697,6 +697,15 @@ impl {Entity}RepositoryImpl {
 
 ## Database Schema
 
+**IMPORTANT**: Each new auditable entity must extend the `audit_entity_type` ENUM in the database.
+This is a manual step that must be included in the migration script.
+
+Example:
+```sql
+-- Add new entity type to audit_entity_type enum
+ALTER TYPE audit_entity_type ADD VALUE 'YourNewEntityType';
+```
+
 ```sql
 -- Migration: Initial {Entity} Schema with Audit and Main Cache Support
 -- Description: Creates {entity}-related tables with audit trail and cache notification triggers

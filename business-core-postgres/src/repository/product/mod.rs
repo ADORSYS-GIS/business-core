@@ -1,5 +1,6 @@
 pub mod account_gl_mapping_repository;
 pub mod fee_type_gl_mapping_repository;
+pub mod interest_rate_tier_repository;
 pub mod factory;
 
 pub use account_gl_mapping_repository::AccountGlMappingRepositoryImpl;

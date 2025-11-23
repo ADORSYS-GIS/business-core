@@ -4,8 +4,10 @@ use postgres_unit_of_work::UnitOfWorkSession;
 use postgres_index_cache::{CacheNotificationListener, IndexCacheHandler};
 use business_core_db::models::product::account_gl_mapping::AccountGlMappingIdxModel;
 use business_core_db::models::product::fee_type_gl_mapping::FeeTypeGlMappingIdxModel;
+use business_core_db::models::product::interest_rate_tier::InterestRateTierIdxModel;
 use super::account_gl_mapping_repository::AccountGlMappingRepositoryImpl;
 use super::fee_type_gl_mapping_repository::FeeTypeGlMappingRepositoryImpl;
+use super::interest_rate_tier_repository::InterestRateTierRepositoryImpl;
 
 /// Factory for creating product module repositories
 ///
@@ -15,6 +17,7 @@ use super::fee_type_gl_mapping_repository::FeeTypeGlMappingRepositoryImpl;
 pub struct ProductRepoFactory {
     account_gl_mapping_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<AccountGlMappingIdxModel>>>,
     fee_type_gl_mapping_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<FeeTypeGlMappingIdxModel>>>,
+    interest_rate_tier_idx_cache: Arc<ParkingRwLock<business_core_db::IdxModelCache<InterestRateTierIdxModel>>>,
 }
 
 impl ProductRepoFactory {
@@ -27,6 +30,10 @@ impl ProductRepoFactory {
         ));
         
         let fee_type_gl_mapping_idx_cache = Arc::new(ParkingRwLock::new(
+            business_core_db::IdxModelCache::new(vec![]).unwrap()
+        ));
+
+        let interest_rate_tier_idx_cache = Arc::new(ParkingRwLock::new(
             business_core_db::IdxModelCache::new(vec![]).unwrap()
         ));
         
@@ -43,11 +50,18 @@ impl ProductRepoFactory {
                 fee_type_gl_mapping_idx_cache.clone(),
             ));
             listener.register_handler(fee_type_handler);
+
+            let interest_rate_tier_handler = Arc::new(IndexCacheHandler::new(
+                "interest_rate_tier_idx".to_string(),
+                interest_rate_tier_idx_cache.clone(),
+            ));
+            listener.register_handler(interest_rate_tier_handler);
         }
         
         Arc::new(Self {
             account_gl_mapping_idx_cache,
             fee_type_gl_mapping_idx_cache,
+            interest_rate_tier_idx_cache,
         })
     }
 
@@ -71,11 +85,22 @@ impl ProductRepoFactory {
         repo
     }
 
+    /// Build a InterestRateTierRepository with the given executor
+    pub fn build_interest_rate_tier_repo(&self, session: &impl UnitOfWorkSession) -> Arc<InterestRateTierRepositoryImpl> {
+        let repo = Arc::new(InterestRateTierRepositoryImpl::new(
+            session.executor().clone(),
+            self.interest_rate_tier_idx_cache.clone(),
+        ));
+        session.register_transaction_aware(repo.clone());
+        repo
+    }
+
     /// Build all product repositories with the given executor
     pub fn build_all_repos(&self, session: &impl UnitOfWorkSession) -> ProductRepositories {
         ProductRepositories {
             account_gl_mapping_repository: self.build_account_gl_mapping_repo(session),
             fee_type_gl_mapping_repository: self.build_fee_type_gl_mapping_repo(session),
+            interest_rate_tier_repository: self.build_interest_rate_tier_repo(session),
         }
     }
 }
@@ -84,4 +109,5 @@ impl ProductRepoFactory {
 pub struct ProductRepositories {
     pub account_gl_mapping_repository: Arc<AccountGlMappingRepositoryImpl>,
     pub fee_type_gl_mapping_repository: Arc<FeeTypeGlMappingRepositoryImpl>,
+    pub interest_rate_tier_repository: Arc<InterestRateTierRepositoryImpl>,
 }
