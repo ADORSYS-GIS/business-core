@@ -16,6 +16,7 @@ pub enum AuditEntityType {
     AccountGlMapping,
     FeeTypeGlMapping,
     InterestRateTier,
+    Product,
 }
 
 impl From<AuditEntityType> for &str {
@@ -33,6 +34,7 @@ impl From<AuditEntityType> for &str {
             AuditEntityType::AccountGlMapping => "AccountGlMapping",
             AuditEntityType::FeeTypeGlMapping => "FeeTypeGlMapping",
             AuditEntityType::InterestRateTier => "InterestRateTier",
+            AuditEntityType::Product => "Product",
         }
     }
 }
@@ -54,6 +56,7 @@ where
         AuditEntityType::AccountGlMapping => "AccountGlMapping",
         AuditEntityType::FeeTypeGlMapping => "FeeTypeGlMapping",
         AuditEntityType::InterestRateTier => "InterestRateTier",
+        AuditEntityType::Product => "Product",
     })
 }
 
@@ -75,6 +78,7 @@ where
         "AccountGlMapping" => Ok(AuditEntityType::AccountGlMapping),
         "FeeTypeGlMapping" => Ok(AuditEntityType::FeeTypeGlMapping),
         "InterestRateTier" => Ok(AuditEntityType::InterestRateTier),
+        "Product" => Ok(AuditEntityType::Product),
         _ => Err(serde::de::Error::custom(format!("Unknown entity type: {s}"))),
     }
 }

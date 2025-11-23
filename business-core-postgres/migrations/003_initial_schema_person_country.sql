@@ -1,6 +1,7 @@
 -- Migration: Initial Country Schema
 -- Description: Creates country-related tables and indexes
 
+ALTER TYPE named_entity_type ADD VALUE 'Country';
 -- Country Table
 CREATE TABLE IF NOT EXISTS country (
     id UUID PRIMARY KEY,
