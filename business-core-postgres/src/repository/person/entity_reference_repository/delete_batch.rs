@@ -1,4 +1,4 @@
-use business_core_db::models::audit::{AuditLinkModel, EntityType};
+use business_core_db::models::audit::{AuditLinkModel, AuditEntityType};
 use async_trait::async_trait;
 use business_core_db::repository::load_batch::LoadBatch;
 use business_core_db::repository::delete_batch::DeleteBatch;
@@ -40,17 +40,15 @@ impl EntityReferenceRepositoryImpl {
                 sqlx::query(
                     r#"
                     INSERT INTO entity_reference_audit
-                    (id, person_id, entity_role, reference_external_id, reference_details_l1, reference_details_l2, reference_details_l3, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    (id, person_id, entity_role, reference_external_id, reference_details, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     "#,
                 )
                 .bind(final_audit_entity.id)
                 .bind(final_audit_entity.person_id)
                 .bind(final_audit_entity.entity_role)
                 .bind(final_audit_entity.reference_external_id.as_str())
-                .bind(final_audit_entity.reference_details_l1.as_deref())
-                .bind(final_audit_entity.reference_details_l2.as_deref())
-                .bind(final_audit_entity.reference_details_l3.as_deref())
+                .bind(final_audit_entity.reference_details)
                 .bind(final_audit_entity.antecedent_hash)
                 .bind(final_audit_entity.antecedent_audit_log_id)
                 .bind(final_audit_entity.hash)
@@ -67,7 +65,7 @@ impl EntityReferenceRepositoryImpl {
                 let audit_link = AuditLinkModel {
                     audit_log_id,
                     entity_id: entity.id,
-                    entity_type: EntityType::EntityReference,
+                    entity_type: AuditEntityType::EntityReference,
                 };
                 sqlx::query(
                     r#"

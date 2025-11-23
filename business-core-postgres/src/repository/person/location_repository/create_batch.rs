@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{AuditLinkModel, EntityType},
+    audit::{AuditLinkModel, AuditEntityType},
     person::location::LocationModel,
 };
 use business_core_db::repository::create_batch::CreateBatch;
@@ -113,7 +113,7 @@ impl LocationRepositoryImpl {
                 let audit_link = AuditLinkModel {
                     audit_log_id,
                     entity_id: item.id,
-                    entity_type: EntityType::Location,
+                    entity_type: AuditEntityType::Location,
                 };
                 sqlx::query(
                     r#"
@@ -267,36 +267,30 @@ mod tests {
         sleep(Duration::from_millis(2000)).await;
 
         // First insert the country record (required by foreign key)
-        sqlx::query("INSERT INTO country (id, iso2, name_l1, name_l2, name_l3) VALUES ($1, $2, $3, $4, $5)")
+        sqlx::query("INSERT INTO country (id, iso2, name) VALUES ($1, $2, $3)")
             .bind(test_country.id)
             .bind(test_country.iso2.as_str())
-            .bind(test_country.name_l1.as_str())
-            .bind(test_country.name_l2.as_ref().map(|s| s.as_str()))
-            .bind(test_country.name_l3.as_ref().map(|s| s.as_str()))
+            .bind(test_country.name)
             .execute(&**pool)
             .await
             .expect("Failed to insert country");
 
         // Then insert the country subdivision record
-        sqlx::query("INSERT INTO country_subdivision (id, country_id, code, name_l1, name_l2, name_l3) VALUES ($1, $2, $3, $4, $5, $6)")
+        sqlx::query("INSERT INTO country_subdivision (id, country_id, code, name) VALUES ($1, $2, $3, $4)")
             .bind(test_subdivision.id)
             .bind(test_subdivision.country_id)
             .bind(test_subdivision.code.as_str())
-            .bind(test_subdivision.name_l1.as_str())
-            .bind(test_subdivision.name_l2.as_ref().map(|s| s.as_str()))
-            .bind(test_subdivision.name_l3.as_ref().map(|s| s.as_str()))
+            .bind(test_subdivision.name)
             .execute(&**pool)
             .await
             .expect("Failed to insert country subdivision");
 
         // Then insert the locality record
-        sqlx::query("INSERT INTO locality (id, country_subdivision_id, code, name_l1, name_l2, name_l3) VALUES ($1, $2, $3, $4, $5, $6)")
+        sqlx::query("INSERT INTO locality (id, country_subdivision_id, code, name) VALUES ($1, $2, $3, $4)")
             .bind(test_locality.id)
             .bind(test_locality.country_subdivision_id)
             .bind(test_locality.code.as_str())
-            .bind(test_locality.name_l1.as_str())
-            .bind(test_locality.name_l2.as_ref().map(|s| s.as_str()))
-            .bind(test_locality.name_l3.as_ref().map(|s| s.as_str()))
+            .bind(test_locality.name)
             .execute(&**pool)
             .await
             .expect("Failed to insert locality");

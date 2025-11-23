@@ -358,8 +358,8 @@ async fn update_batch_impl(
                 antecedent_hash = $N+2,
                 antecedent_audit_log_id = $N+3
             WHERE id = $1
-              AND hash = $N+2
-              AND audit_log_id = $N+3
+              AND hash = $N+4
+              AND audit_log_id = $N+5
             "#,
         )
         .bind(entity.id)
@@ -368,7 +368,9 @@ async fn update_batch_impl(
         .bind(entity.hash)
         .bind(entity.audit_log_id)
         .bind(entity.antecedent_hash)
-        .bind(entity.antecedent_audit_log_id);
+        .bind(entity.antecedent_audit_log_id)
+        .bind(previous_hash)
+        .bind(previous_audit_log_id);
         
         // 7. Create audit link
         let audit_link = AuditLinkModel {
@@ -571,6 +573,15 @@ async fn exist_by_ids_impl(
 ## Database Schema
 
 A complete migration script for an auditable entity (without index) includes the main table and an audit table.
+
+**IMPORTANT**: Each new auditable entity must extend the `audit_entity_type` ENUM in the database.
+This is a manual step that must be included in the migration script.
+
+Example:
+```sql
+-- Add new entity type to audit_entity_type enum
+ALTER TYPE audit_entity_type ADD VALUE 'YourNewEntityType';
+```
 
 ```sql
 -- Migration: Initial {Entity} Schema with Audit Support (No Index)

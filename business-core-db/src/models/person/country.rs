@@ -15,9 +15,8 @@ pub struct CountryModel {
     
     pub iso2: HeaplessString<2>,
 
-    pub name_l1: HeaplessString<100>,
-    pub name_l2: Option<HeaplessString<100>>,
-    pub name_l3: Option<HeaplessString<100>>,
+    /// Reference to NamedModel with named_entity_type = Country
+    pub name: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

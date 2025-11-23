@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use business_core_db::models::{
-    audit::{audit_link::AuditLinkModel, entity_type::EntityType},
+    audit::{audit_link::AuditLinkModel, audit_entity_type::AuditEntityType},
     reason_and_purpose::reason_reference::ReasonReferenceModel,
 };
 use business_core_db::repository::update_batch::UpdateBatch;
@@ -111,7 +111,7 @@ impl ReasonReferenceRepositoryImpl {
             let audit_link = AuditLinkModel {
                 audit_log_id,
                 entity_id: entity.id,
-                entity_type: EntityType::ReasonReference,
+                entity_type: AuditEntityType::ReasonReference,
             };
             let audit_link_query = sqlx::query(
                 r#"

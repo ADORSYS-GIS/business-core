@@ -32,9 +32,9 @@ See the [Finder Methods section](entity_with_index.md#finder-methods-for-seconda
 
 ## Template Reference
 
-The audit pattern is based on the Location entity implementation:
-- **Model**: `business-core/business-core-db/src/models/person/location.rs`
-- **Repository**: `business-core/business-core-postgres/src/repository/person/location_repository/`
+The audit pattern is based on the Named entity implementation:
+- **Model**: `business-core/business-core-db/src/models/description/named.rs`
+- **Repository**: `business-core/business-core-postgres/src/repository/description/named_repository/`
 - **Audit Hash Logic**: Integrated directly within the `{Entity}Model`'s audit fields.
 - **Auditable Trait**: `business-core/business-core-db/src/models/auditable.rs`
 
@@ -137,52 +137,66 @@ entity.audit_log_id = Some(audit_log_id);
 // Build audit insert query - inserts the entity
 let audit_insert_query = sqlx::query(
     r#"
-    INSERT INTO {table_name}_audit
-    (id, field1, field2, ..., hash, audit_log_id)
-    VALUES ($1, $2, $3, ..., $N, $N+1)
+    INSERT INTO named_audit
+    (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     "#,
-)
-.bind(entity.id)
-// Bind all entity fields (including hash and audit_log_id)
-.bind(entity.field1.as_str())
-.bind(entity.field2.as_str())
-// ... bind remaining entity fields
-.bind(entity.hash)  // Entity's hash field (computed above)
-.bind(entity.audit_log_id)  // Entity's audit_log_id field (set above)
+    )
+    .bind(item.id)
+    .bind(item.entity_type)
+    .bind(item.name_l1.as_str())
+    .bind(item.name_l2.as_deref())
+    .bind(item.name_l3.as_deref())
+    .bind(item.name_l4.as_deref())
+    .bind(item.description_l1.as_deref())
+    .bind(item.description_l2.as_deref())
+    .bind(item.description_l3.as_deref())
+    .bind(item.description_l4.as_deref())
+    .bind(item.antecedent_hash)
+    .bind(item.antecedent_audit_log_id)
+    .bind(item.hash)
+    .bind(item.audit_log_id)
 // Antecedent fields have default value for a new entity. So no need to bind.
 
 // Build entity insert query
 let entity_insert_query = sqlx::query(
     r#"
-    INSERT INTO {table_name}
-    (id, field1, field2, ..., hash, audit_log_id)
-    VALUES ($1, $2, $3, ..., $N, $N+1)
+    INSERT INTO named
+    (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     "#,
-)
-.bind(entity.id)
-.bind(entity.field1.as_str())
-// ... bind all fields
-.bind(entity.hash)  // Set hash
-.bind(entity.audit_log_id);  // Set audit_log_id
+    )
+    .bind(item.id)
+    .bind(item.entity_type)
+    .bind(item.name_l1.as_str())
+    .bind(item.name_l2.as_deref())
+    .bind(item.name_l3.as_deref())
+    .bind(item.name_l4.as_deref())
+    .bind(item.description_l1.as_deref())
+    .bind(item.description_l2.as_deref())
+    .bind(item.description_l3.as_deref())
+    .bind(item.description_l4.as_deref())
+    .bind(item.antecedent_hash)
+    .bind(item.antecedent_audit_log_id)
+    .bind(item.hash)
+    .bind(item.audit_log_id);
 // Antecedent fields have default value for a new entity. So no need to bind.
 
 // Build index insert query (same as base template)
 let idx_insert_query = sqlx::query(
     r#"
-    INSERT INTO {table_name}_idx
-    (id, index_field1, index_field2, ...)
-    VALUES ($1, $2, $3, ...)
+    INSERT INTO named_idx (id, entity_type)
+    VALUES ($1, $2)
     "#,
-)
-.bind(entity.id)
-// ... bind index fields
-;
+    )
+    .bind(idx.id)
+    .bind(idx.entity_type);
 
 // Create audit link to track the entity modification in the transaction
 let audit_link = AuditLinkModel {
     audit_log_id,
     entity_id: entity.id,
-    entity_type: EntityType::{Entity}, // e.g., EntityType::Location
+    entity_type: AuditEntityType::Named,
 };
 let audit_link_query = sqlx::query(
     r#"
@@ -249,51 +263,68 @@ entity.hash = new_computed_hash;
 // 5. Build audit insert query (includes all entity fields)
 let audit_insert_query = sqlx::query(
     r#"
-    INSERT INTO {table_name}_audit
-    (id, field1, field2, ..., hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
-    VALUES ($1, $2, $3, ..., $N, $N+1, $N+2, $N+3)
+    INSERT INTO named_audit
+    (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     "#,
-)
-.bind(entity.id)
-// Bind all entity fields (including hash and audit_log_id)
-.bind(entity.field1.as_str())
-// ... bind remaining entity fields
-.bind(entity.hash)  // Entity's hash field (updated above)
-.bind(entity.audit_log_id)  // Entity's audit_log_id field (updated above)
-// Bind antecedent fields
-.bind(entity.antecedent_hash)
-.bind(entity.antecedent_audit_log_id);
+    )
+    .bind(item.id)
+    .bind(item.entity_type)
+    .bind(item.name_l1.as_str())
+    .bind(item.name_l2.as_deref())
+    .bind(item.name_l3.as_deref())
+    .bind(item.name_l4.as_deref())
+    .bind(item.description_l1.as_deref())
+    .bind(item.description_l2.as_deref())
+    .bind(item.description_l3.as_deref())
+    .bind(item.description_l4.as_deref())
+    .bind(item.antecedent_hash)
+    .bind(item.antecedent_audit_log_id)
+    .bind(item.hash)
+    .bind(item.audit_log_id);
 
 // Build entity update query
 let entity_update_query = sqlx::query(
     r#"
-    UPDATE {table_name} SET
-        field1 = $2,
-        field2 = $3,
-        // ... all fields
-        hash = $N,
-        audit_log_id = $N+1,
-        antecedent_hash = $N+2,
-        antecedent_audit_log_id = $N+3
-    WHERE id = $1
-      AND hash = $N+2
-      AND audit_log_id = $N+3
+    UPDATE named SET
+    entity_type = $2,
+    name_l1 = $3,
+    name_l2 = $4,
+    name_l3 = $5,
+    name_l4 = $6,
+    description_l1 = $7,
+    description_l2 = $8,
+    description_l3 = $9,
+    description_l4 = $10,
+    antecedent_hash = $11,
+    antecedent_audit_log_id = $12,
+    hash = $13,
+    audit_log_id = $14
+    WHERE id = $1 AND hash = $15 AND audit_log_id = $16
     "#,
-)
-.bind(entity.id)
-.bind(entity.field1.as_str())
-// ... bind all fields
-.bind(entity.hash)  // Update hash
-.bind(entity.audit_log_id)  // Update audit_log_id
-// Bind antecedent fields
-.bind(entity.antecedent_hash)
-.bind(entity.antecedent_audit_log_id);
+    )
+    .bind(item.id)
+    .bind(item.entity_type)
+    .bind(item.name_l1.as_str())
+    .bind(item.name_l2.as_deref())
+    .bind(item.name_l3.as_deref())
+    .bind(item.name_l4.as_deref())
+    .bind(item.description_l1.as_deref())
+    .bind(item.description_l2.as_deref())
+    .bind(item.description_l3.as_deref())
+    .bind(item.description_l4.as_deref())
+    .bind(item.antecedent_hash)
+    .bind(item.antecedent_audit_log_id)
+    .bind(item.hash)
+    .bind(item.audit_log_id)
+    .bind(previous_hash)
+    .bind(previous_audit_log_id);
 
 // Create audit link
 let audit_link = AuditLinkModel {
     audit_log_id,
     entity_id: entity.id,
-    entity_type: EntityType::{Entity},
+    entity_type: AuditEntityType::Named,
 };
 let audit_link_query = sqlx::query(
     r#"
@@ -353,23 +384,31 @@ for entity in &entities_to_delete {
     // 3. Build the audit insert query for the final state snapshot
     let audit_insert_query = sqlx::query(
         r#"
-        INSERT INTO {table_name}_audit
-        (id, field1, field2, ..., hash, audit_log_id, antecedent_hash, antecedent_audit_log_id)
-        VALUES ($1, $2, $3, ..., $N, $N+1, $N+2, $N+3)
+        INSERT INTO named_audit
+        (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         "#,
-    )
-    .bind(final_audit_entity.id)
-    // ... bind all fields from final_audit_entity
-    .bind(final_audit_entity.hash)
-    .bind(final_audit_entity.audit_log_id)
-    .bind(final_audit_entity.antecedent_hash)
-    .bind(final_audit_entity.antecedent_audit_log_id);
+        )
+        .bind(final_audit_entity.id)
+        .bind(final_audit_entity.entity_type)
+        .bind(final_audit_entity.name_l1.as_str())
+        .bind(final_audit_entity.name_l2.as_deref())
+        .bind(final_audit_entity.name_l3.as_deref())
+        .bind(final_audit_entity.name_l4.as_deref())
+        .bind(final_audit_entity.description_l1.as_deref())
+        .bind(final_audit_entity.description_l2.as_deref())
+        .bind(final_audit_entity.description_l3.as_deref())
+        .bind(final_audit_entity.description_l4.as_deref())
+        .bind(final_audit_entity.antecedent_hash)
+        .bind(final_audit_entity.antecedent_audit_log_id)
+        .bind(final_audit_entity.hash)
+        .bind(final_audit_entity.audit_log_id);
 
     // 4. Build the entity delete query. The corresponding index record
     //    will be deleted automatically via `ON DELETE CASCADE`.
     let entity_delete_query = sqlx::query(
         r#"
-        DELETE FROM {table_name} WHERE id = $1
+        DELETE FROM named WHERE id = $1
         "#,
     )
     .bind(entity.id);
@@ -378,7 +417,7 @@ for entity in &entities_to_delete {
     let audit_link = AuditLinkModel {
         audit_log_id,
         entity_id: entity.id,
-        entity_type: EntityType::{Entity},
+        entity_type: AuditEntityType::Named,
     };
     let audit_link_query = sqlx::query(
         r#"
@@ -408,53 +447,72 @@ for entity in &entities_to_delete {
 
 A complete migration script for an auditable entity includes the main table, an index table, and an audit table.
 
+**IMPORTANT**: Each new auditable entity must extend the `audit_entity_type` ENUM in the database.
+This is a manual step that must be included in the migration script.
+
+Example:
+```sql
+-- Add new entity type to audit_entity_type enum
+ALTER TYPE audit_entity_type ADD VALUE 'YourNewEntityType';
+```
+
 ```sql
 -- Migration: Initial {Entity} Schema with Audit Support
 -- Description: Creates {entity}-related tables with audit trail.
  
--- Enum Types (if any)
-CREATE TYPE IF NOT EXISTS {enum_name} AS ENUM ('Variant1', 'Variant2');
+-- Enum Types
+CREATE TYPE named_entity_type AS ENUM ('Country', 'CountrySubdivision', 'Locality');
 
 -- Enum for auditable entity types
-CREATE TYPE entity_type AS ENUM ('LOCATION', ...);
+CREATE TYPE audit_entity_type AS ENUM ('Location', 'Named', ...);
  
--- Main {Entity} Table
+-- Main Named Table
 -- Stores the current state of the entity.
-CREATE TABLE IF NOT EXISTS {table_name} (
+CREATE TABLE IF NOT EXISTS named (
     id UUID PRIMARY KEY,
-    field1 VARCHAR(...),
-    field2 VARCHAR(...),
-    -- ... other fields
+    entity_type named_entity_type NOT NULL,
+    name_l1 VARCHAR(50) NOT NULL,
+    name_l2 VARCHAR(50),
+    name_l3 VARCHAR(50),
+    name_l4 VARCHAR(50),
+    description_l1 VARCHAR(255),
+    description_l2 VARCHAR(255),
+    description_l3 VARCHAR(255),
+    description_l4 VARCHAR(255),
     hash BIGINT NOT NULL DEFAULT 0,
     audit_log_id UUID REFERENCES audit_log(id),
     antecedent_hash BIGINT NOT NULL DEFAULT 0,
     antecedent_audit_log_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
 );
 
--- {Entity} Index Table
+-- Named Index Table
 -- Contains fields for application-layer indexing and caching.
-CREATE TABLE IF NOT EXISTS {table_name}_idx (
-    id UUID PRIMARY KEY REFERENCES {table_name}(id) ON DELETE CASCADE,
-    index_field1 BIGINT,
-    index_field2 UUID,
-    -- ... other index fields
+CREATE TABLE IF NOT EXISTS named_idx (
+    id UUID PRIMARY KEY REFERENCES named(id) ON DELETE CASCADE,
+    entity_type named_entity_type NOT NULL
 );
 
--- Create trigger for {table_name}_idx table to notify listeners of changes
-DROP TRIGGER IF EXISTS {table_name}_idx_notify ON {table_name}_idx;
-CREATE TRIGGER {table_name}_idx_notify
-    AFTER INSERT OR UPDATE OR DELETE ON {table_name}_idx
+-- Create trigger for named_idx table to notify listeners of changes
+DROP TRIGGER IF EXISTS named_idx_notify ON named_idx;
+CREATE TRIGGER named_idx_notify
+    AFTER INSERT OR UPDATE OR DELETE ON named_idx
     FOR EACH ROW
     EXECUTE FUNCTION notify_cache_change();
 
--- {Entity} Audit Table
+-- Named Audit Table
 -- Stores a complete, immutable snapshot of the entity at each change.
-CREATE TABLE IF NOT EXISTS {table_name}_audit (
+CREATE TABLE IF NOT EXISTS named_audit (
     -- All entity fields are duplicated here for a complete snapshot.
     id UUID NOT NULL,
-    field1 VARCHAR(...),
-    field2 VARCHAR(...),
-    -- ... all other entity fields
+    entity_type named_entity_type NOT NULL,
+    name_l1 VARCHAR(50) NOT NULL,
+    name_l2 VARCHAR(50),
+    name_l3 VARCHAR(50),
+    name_l4 VARCHAR(50),
+    description_l1 VARCHAR(255),
+    description_l2 VARCHAR(255),
+    description_l3 VARCHAR(255),
+    description_l4 VARCHAR(255),
     
     -- Audit-specific fields
     hash BIGINT NOT NULL,
@@ -470,15 +528,15 @@ CREATE TABLE IF NOT EXISTS {table_name}_audit (
 -- Note: The audit table intentionally lacks a foreign key to the main table
 -- with `ON DELETE CASCADE`. This ensures that audit history is preserved
 -- even if the main entity record is deleted.
-CREATE INDEX IF NOT EXISTS idx_{table_name}_audit_id
-    ON {table_name}_audit(id);
+CREATE INDEX IF NOT EXISTS idx_named_audit_id
+    ON named_audit(id);
     
     -- Audit Link Table
     -- Tracks all entities modified in a single transaction.
     CREATE TABLE IF NOT EXISTS audit_link (
         audit_log_id UUID NOT NULL REFERENCES audit_log(id),
         entity_id UUID NOT NULL,
-        entity_type entity_type NOT NULL,
+        entity_type audit_entity_type NOT NULL,
         PRIMARY KEY (audit_log_id, entity_id)
     );
     
@@ -536,44 +594,27 @@ Beyond the base template tests, add:
 async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ctx = setup_test_context().await?;
     let audit_log_repo = &ctx.audit_repos().audit_log_repository;
-    let country_repo = &ctx.person_repos().country_repository;
-    let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
-    let locality_repo = &ctx.person_repos().locality_repository;
-    let location_repo = &ctx.person_repos().location_repository;
+    let named_repo = &ctx.description_repos().named_repository;
 
-    // First create a country (required by foreign key constraint)
-    let country = create_test_country("US", "United States");
-    let country_id = country.id;
     let audit_log = create_test_audit_log();
     audit_log_repo.create(&audit_log).await?;
-    country_repo.create_batch(vec![country], audit_log.id).await?;
 
-    // Create a country subdivision (required by foreign key constraint)
-    let subdivision = create_test_country_subdivision(country_id, "CA", "California");
-    let subdivision_id = subdivision.id;
-    country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
-
-    // Create a locality (required by foreign key constraint)
-    let locality = create_test_locality(subdivision_id, "SF", "San Francisco");
-    let locality_id = locality.id;
-    locality_repo.create_batch(vec![locality], audit_log.id).await?;
-
-    let mut locations = Vec::new();
+    let mut named_entities = Vec::new();
     for i in 0..5 {
-        let location = create_test_location(
-            locality_id,
-            &format!("{} Main St", i),
-        );
-        locations.push(location);
+        let named = create_test_named(&format!("Entity {i}"));
+        named_entities.push(named);
     }
 
-    let saved_locations = location_repo.create_batch(locations.clone(), audit_log.id).await?;
+    let saved_entities = named_repo
+        .create_batch(named_entities.clone(), Some(audit_log.id))
+        .await?;
 
-    assert_eq!(saved_locations.len(), 5);
+    assert_eq!(saved_entities.len(), 5);
 
-    for saved_location in &saved_locations {
-        assert_eq!(saved_location.locality_id, locality_id);
-        assert!(saved_location.street_line1.as_str().ends_with(" Main St"));
+    for (i, saved_entity) in saved_entities.iter().enumerate() {
+        assert_eq!(saved_entity.name_l1.as_str(), format!("Entity {i}"));
+        assert!(saved_entity.audit_log_id.is_some());
+        assert_eq!(saved_entity.audit_log_id.unwrap(), audit_log.id);
     }
 
     Ok(())
@@ -583,55 +624,35 @@ async fn test_create_batch() -> Result<(), Box<dyn std::error::Error + Send + Sy
 async fn test_update_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ctx = setup_test_context().await?;
     let audit_log_repo = &ctx.audit_repos().audit_log_repository;
-    let country_repo = &ctx.person_repos().country_repository;
-    let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
-    let locality_repo = &ctx.person_repos().locality_repository;
-    let location_repo = &ctx.person_repos().location_repository;
+    let named_repo = &ctx.description_repos().named_repository;
 
-    // First create a country (required by foreign key constraint)
-    let country = create_test_country("JP", "Japan");
-    let country_id = country.id;
     let audit_log = create_test_audit_log();
     audit_log_repo.create(&audit_log).await?;
-    country_repo.create_batch(vec![country], audit_log.id).await?;
 
-    // Create a country subdivision (required by foreign key constraint)
-    let subdivision = create_test_country_subdivision(country_id, "TK", "Tokyo");
-    let subdivision_id = subdivision.id;
-    country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
-
-    // Create a locality (required by foreign key constraint)
-    let locality = create_test_locality(subdivision_id, "SH", "Shibuya");
-    let locality_id = locality.id;
-    locality_repo.create_batch(vec![locality], audit_log.id).await?;
-
-    let mut locations = Vec::new();
+    let mut named_entities = Vec::new();
     for i in 0..3 {
-        let location = create_test_location(
-            locality_id,
-            &format!("{} Shibuya Crossing", i),
-        );
-        locations.push(location);
+        let named = create_test_named(&format!("Original Entity {i}"));
+        named_entities.push(named);
     }
 
-    let saved = location_repo.create_batch(locations, audit_log.id).await?;
+    let saved = named_repo.create_batch(named_entities, Some(audit_log.id)).await?;
 
-    // Update locations
-    // # Attention, we are updating in the same transaction. This will not happen in a rela scenario
-    // in orther to prevent duplicate key, we will create a new audit log for the update.
+    // Update entities
+    // # Attention, we are updating in the same transaction. This will not happen in a real scenario
+    // in order to prevent duplicate key, we will create a new audit log for the update.
     let update_audit_log = create_test_audit_log();
     audit_log_repo.create(&update_audit_log).await?;
-    let mut updated_locations = Vec::new();
-    for mut location in saved {
-        location.street_line1 = HeaplessString::try_from("Updated Address").unwrap();
-        updated_locations.push(location);
+    let mut updated_entities = Vec::new();
+    for mut named in saved {
+        named.name_l1 = HeaplessString::try_from("Updated Entity").unwrap();
+        updated_entities.push(named);
     }
 
-    let updated = location_repo.update_batch(updated_locations, update_audit_log.id).await?;
+    let updated = named_repo.update_batch(updated_entities, Some(update_audit_log.id)).await?;
 
     assert_eq!(updated.len(), 3);
-    for location in updated {
-        assert_eq!(location.street_line1.as_str(), "Updated Address");
+    for named in updated {
+        assert_eq!(named.name_l1.as_str(), "Updated Entity");
     }
 
     Ok(())
@@ -642,45 +663,25 @@ async fn test_update_batch() -> Result<(), Box<dyn std::error::Error + Send + Sy
 async fn test_delete_batch() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let ctx = setup_test_context().await?;
     let audit_log_repo = &ctx.audit_repos().audit_log_repository;
-    let country_repo = &ctx.person_repos().country_repository;
-    let country_subdivision_repo = &ctx.person_repos().country_subdivision_repository;
-    let locality_repo = &ctx.person_repos().locality_repository;
-    let location_repo = &ctx.person_repos().location_repository;
+    let named_repo = &ctx.description_repos().named_repository;
 
-    // First create a country (required by foreign key constraint)
-    let country = create_test_country("US", "United States");
-    let country_id = country.id;
     let audit_log = create_test_audit_log();
     audit_log_repo.create(&audit_log).await?;
-    country_repo.create_batch(vec![country], audit_log.id).await?;
 
-    // Create a country subdivision (required by foreign key constraint)
-    let subdivision = create_test_country_subdivision(country_id, "CA", "California");
-    let subdivision_id = subdivision.id;
-    country_subdivision_repo.create_batch(vec![subdivision], audit_log.id).await?;
-
-    // Create a locality (required by foreign key constraint)
-    let locality = create_test_locality(subdivision_id, "LA", "Los Angeles");
-    let locality_id = locality.id;
-    locality_repo.create_batch(vec![locality], audit_log.id).await?;
-
-    let mut locations = Vec::new();
+    let mut named_entities = Vec::new();
     for i in 0..3 {
-        let location = create_test_location(
-            locality_id,
-            &format!("{} Sunset Blvd", i),
-        );
-        locations.push(location);
+        let named = create_test_named(&format!("Entity to Delete {i}"));
+        named_entities.push(named);
     }
 
-    let saved = location_repo.create_batch(locations, audit_log.id).await?;
+    let saved = named_repo.create_batch(named_entities, Some(audit_log.id)).await?;
 
     let ids: Vec<Uuid> = saved.iter().map(|s| s.id).collect();
     // # Attention, we are deleting in the same transaction. This will not happen in a real scenario
     // in order to prevent duplicate key, we will create a new audit log for the delete.
     let delete_audit_log = create_test_audit_log();
     audit_log_repo.create(&delete_audit_log).await?;
-    let deleted_count = location_repo.delete_batch(&ids, delete_audit_log.id).await?;
+    let deleted_count = named_repo.delete_batch(&ids, Some(delete_audit_log.id)).await?;
 
     assert_eq!(deleted_count, 3);
 
@@ -811,25 +812,24 @@ Extends the base template checklist with:
 
 ```rust
 // Initialize repository factory (same as base template)
-let person_factory = PersonRepoFactory::new(Some(&mut listener));
+let description_factory = DescriptionRepoFactory::new(Some(&mut listener));
 
 // Use with unit of work
 let session = unit_of_work.start_session().await?;
-let location_repo = person_factory.build_location_repo(&session);
+let named_repo = description_factory.build_named_repo(&session);
 
 // Create audit log entry first (application responsibility)
 let audit_log_id = audit_log_repo.create_log(/* audit details */).await?;
 
 // Create entity with audit
-let location = LocationModel {
+let named = NamedModel {
     id: Uuid::new_v4(),
-    street_line1: HeaplessString::try_from("123 Main St").unwrap(),
-    locality_id: locality.id,
+    name_l1: HeaplessString::try_from("Example").unwrap(),
     // ... other fields
     audit_log_id: None,  // Will be set by create_batch operation
 };
 
-let saved_locations = location_repo.create_batch(vec![location], audit_log_id).await?;
+let saved_named = named_repo.create_batch(vec![named], Some(audit_log_id)).await?;
 
 // Commit - audit record is persisted atomically with entity
 session.commit().await?;
@@ -900,7 +900,7 @@ This creates an immutable audit chain where each record cryptographically links 
 - **Base Template**: [Entity with Index](entity_with_index.md)
 - **Audit Traits**: `business-core/business-core-db/src/models/auditable.rs`
 - **Audit Models**: `business-core/business-core-db/src/models/audit/`
-- **Complete Example**: Location entity in `business-core`
+- **Complete Example**: Named entity in `business-core`
 - **Hash Library**: [twox-hash](https://docs.rs/twox-hash/)
 - **CBOR Library**: [ciborium](https://docs.rs/ciborium/)
 
@@ -926,28 +926,20 @@ This test verifies that a direct `INSERT` into the entity's table (and its index
 
 ```rust
 #[tokio::test]
-async fn test_{entity}_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn test_named_insert_triggers_cache_notification() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Setup test context with the handler
     let ctx = setup_test_context_and_listen().await?;
     let pool = ctx.pool();
 
-    // Create all prerequisite records for the entity. For example, for a "location",
-    // you would need to create a country, country_subdivision, and locality first.
-    // These should be created using direct SQL inserts to simulate an external process.
-    let prerequisite_code = random(2);
-    // ... create prerequisite records here ...
+    // Create a test named entity
+    let test_named = create_test_named(&random(20));
+    let named_idx = test_named.to_index();
 
-    // Create a test entity
-    let test_{entity} = create_test_{entity}(/*...foreign keys...*/, &random(5));
-    let {entity}_idx = test_{entity}.to_index();
-
-    // Give listener time to start
+    // Give listener more time to start and establish connection
+    // The listener needs time to connect and execute LISTEN command
     sleep(Duration::from_millis(2000)).await;
 
-    // Insert prerequisite records directly into the database
-    // ... insert prerequisite records here ...
-
-    // Insert the audit log record directly
+    // Insert the named record
     let audit_log = create_test_audit_log();
     sqlx::query(
         r#"
@@ -961,61 +953,83 @@ async fn test_{entity}_insert_triggers_cache_notification() -> Result<(), Box<dy
     .execute(&**pool)
     .await
     .expect("Failed to insert audit log");
-
-    // Prepare the entity for insertion (compute hash, etc.)
-    let mut test_{entity}_for_hashing = test_{entity}.clone();
-    test_{entity}_for_hashing.hash = 0;
-    test_{entity}_for_hashing.audit_log_id = Some(audit_log.id);
+    
+    let mut test_named_for_hashing = test_named.clone();
+    test_named_for_hashing.hash = 0;
+    test_named_for_hashing.audit_log_id = Some(audit_log.id);
     let computed_hash =
-        business_core_db::utils::hash_as_i64(&test_{entity}_for_hashing).unwrap();
-    let final_{entity} = {Entity}Model {
+        business_core_db::utils::hash_as_i64(&test_named_for_hashing).unwrap();
+    let final_named = NamedModel {
         hash: computed_hash,
         audit_log_id: Some(audit_log.id),
-        ..test_{entity}
+        ..test_named
     };
 
-    // Insert the main entity record directly
     sqlx::query(
         r#"
-        INSERT INTO {table_name}
-        (/*...fields...*/, hash, audit_log_id)
-        VALUES (/*...values...*/)
+        INSERT INTO named
+        (id, entity_type, name_l1, name_l2, name_l3, name_l4, description_l1, description_l2, description_l3, description_l4, antecedent_hash, antecedent_audit_log_id, hash, audit_log_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         "#,
     )
-    // ... bind all fields from final_{entity} ...
+    .bind(final_named.id)
+    .bind(final_named.entity_type)
+    .bind(final_named.name_l1.as_str())
+    .bind(final_named.name_l2.as_deref())
+    .bind(final_named.name_l3.as_deref())
+    .bind(final_named.name_l4.as_deref())
+    .bind(final_named.description_l1.as_deref())
+    .bind(final_named.description_l2.as_deref())
+    .bind(final_named.description_l3.as_deref())
+    .bind(final_named.description_l4.as_deref())
+    .bind(final_named.antecedent_hash)
+    .bind(final_named.antecedent_audit_log_id)
+    .bind(final_named.hash)
+    .bind(final_named.audit_log_id)
     .execute(&**pool)
     .await
-    .expect("Failed to insert {entity}");
+    .expect("Failed to insert named");
 
-    // Insert the entity index record directly
-    sqlx::query("INSERT INTO {table_name}_idx (/*...fields...*/) VALUES (/*...values...*/) ")
-        // ... bind all fields from {entity}_idx ...
+    // Then insert the named index directly into the database using raw SQL
+    sqlx::query("INSERT INTO named_idx (id, entity_type) VALUES ($1, $2)")
+        .bind(named_idx.id)
+        .bind(named_idx.entity_type)
         .execute(&**pool)
         .await
-        .expect("Failed to insert {entity} index");
+        .expect("Failed to insert named index");
 
-    // Give time for notification to be processed
+    // Give more time for notification to be processed
     sleep(Duration::from_millis(500)).await;
 
-    let {entity}_repo = &ctx.person_repos().{entity}_repository;
+    let named_repo = &ctx.description_repos().named_repository;
 
-    // Verify the cache was updated
-    let cache = {entity}_repo.{entity}_idx_cache.read().await;
+    // Verify the cache was updated via the trigger
+    let cache = named_repo.named_idx_cache.read().await;
     assert!(
-        cache.contains_primary(&{entity}_idx.id),
-        "{Entity} should be in cache after insert"
+        cache.contains_primary(&named_idx.id),
+        "Named should be in cache after insert"
     );
 
-    // ... additional cache content verification ...
+    let cached_named = cache.get_by_primary(&named_idx.id);
+    assert!(
+        cached_named.is_some(),
+        "Named should be retrievable from cache"
+    );
 
+    // Verify the cached data matches
+    let cached_named = cached_named.unwrap();
+    assert_eq!(cached_named.id, named_idx.id);
+    assert_eq!(cached_named.entity_type, named_idx.entity_type);
+
+    // Drop the read lock before proceeding to allow notification handler to process
     drop(cache);
 
-    // Delete all created records
-    sqlx::query("DELETE FROM {table_name} WHERE id = $1")
-        .bind({entity}_idx.id)
+    // Delete the records from the database, will cascade delete named_idx
+    sqlx::query("DELETE FROM named WHERE id = $1")
+        .bind(named_idx.id)
         .execute(&**pool)
         .await
-        .expect("Failed to delete {entity}");
+        .expect("Failed to delete named");
 
     sqlx::query("DELETE FROM audit_log WHERE id = $1")
         .bind(audit_log.id)
@@ -1023,16 +1037,14 @@ async fn test_{entity}_insert_triggers_cache_notification() -> Result<(), Box<dy
         .await
         .expect("Failed to delete audit log");
 
-    // ... delete all prerequisite records ...
-
-    // Give time for delete notification to be processed
+    // Give more time for notification to be processed
     sleep(Duration::from_millis(500)).await;
 
     // Verify the cache entry was removed
-    let cache = {entity}_repo.{entity}_idx_cache.read().await;
+    let cache = named_repo.named_idx_cache.read().await;
     assert!(
-        !cache.contains_primary(&{entity}_idx.id),
-        "{Entity} should be removed from cache after delete"
+        !cache.contains_primary(&named_idx.id),
+        "Named should be removed from cache after delete"
     );
 
     Ok(())

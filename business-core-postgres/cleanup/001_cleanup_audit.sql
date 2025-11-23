@@ -12,5 +12,5 @@ DROP TABLE IF EXISTS audit_log CASCADE;
 DROP INDEX IF EXISTS idx_audit_link_audit_log_id;
 DROP TABLE IF EXISTS audit_link CASCADE;
 
--- Drop entity_type enum
-DROP TYPE IF EXISTS entity_type;
+-- Drop audit_entity_type enum
+DROP TYPE IF EXISTS audit_entity_type;
